@@ -1,0 +1,226 @@
+#!/bin/bash
+
+syncderp=false
+synckernel=false
+poweroff=false
+device=""
+jobs=""
+kernelversion="BP2A"
+kernelsrcfolder=`pwd`"/googlekernel"
+derpfestfolder=`pwd`"/derpfest"
+
+function banner() {
+    clear
+    echo "▓█████▄ ▓█████  ██▀███   ██▓███    █████▒▓█████   ██████ ▄▄▄█████▓"
+    echo "▒██▀ ██▌▓█   ▀ ▓██ ▒ ██▒▓██░  ██▒▓██   ▒ ▓█   ▀ ▒██    ▒ ▓  ██▒ ▓▒"
+    echo "░██   █▌▒███   ▓██ ░▄█ ▒▓██░ ██▓▒▒████ ░ ▒███   ░ ▓██▄   ▒ ▓██░ ▒░"
+    echo "░▓█▄   ▌▒▓█  ▄ ▒██▀▀█▄  ▒██▄█▓▒ ▒░▓█▒  ░ ▒▓█  ▄   ▒   ██▒░ ▓██▓ ░ "
+    echo "░▒████▓ ░▒████▒░██▓ ▒██▒▒██▒ ░  ░░▒█░    ░▒████▒▒██████▒▒  ▒██▒ ░ "
+    echo " ▒▒▓  ▒ ░░ ▒░ ░░ ▒▓ ░▒▓░▒▓▒░ ░  ░ ▒ ░    ░░ ▒░ ░▒ ▒▓▒ ▒ ░  ▒ ░░   "
+    echo " ░ ▒  ▒  ░ ░  ░  ░▒ ░ ▒░░▒ ░      ░       ░ ░  ░░ ░▒  ░ ░    ░    "
+    echo " ░ ░  ░    ░     ░░   ░ ░░        ░ ░       ░   ░  ░  ░    ░      "
+    echo "   ░       ░  ░   ░                         ░  ░      ░           "
+    echo " ░                                                                "
+    echo
+}
+
+
+function checkernel() {
+    echo
+    echo "- Checking kernel sources..."
+    if [ ! -d $kernelsrcfolder ]; then
+        echo -e "\e[1;31mWARNING!! Kernel source folder not found!!"
+        echo -e "Execute the script again with the -k option to download kernel sources\e[0m"
+        exit
+    else
+        echo -e "\e[32mKernel sources found\e[0m"
+    fi
+    sleep 2
+
+    kerneldevice=""
+    if [ $1 == "panther" ] || [ $1 == "cheetah" ]; then
+        kerneldevice="pantah"
+    else
+        kerneldevice="$1" #Lynx
+    fi
+
+    kernelfolder="device/google/$kerneldevice-kernels/$kernelversion"
+
+    echo
+    echo "- Checking if kernel has been already compiled..."
+    if [ -f "$derpfestfolder/$kernelfolder/boot.img" ]; then #TODO add the rest of the images to OR if
+        echo -e "\e[32mFolder $kernelfolder found\e[0m"
+    else
+        echo -e "\e[33mFolder $kernelfolder not found, compiling kernel...\e[0m"
+        SECONDS=0
+        mkdir -p $derpfestfolder/$kernelfolder
+        cd $kernelsrcfolder
+#        ./build_$kerneldevice.sh #build kernel
+        konsole -e "bash -c './build_$kerneldevice.sh && sleep 5 && exit; exec bash'" #build kernel
+        elapsed_time=$SECONDS
+        printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
+        #rm -rf $kernelfolder
+        #cd $derpfestfolder
+        cp $kernelsrcfolder/out/$kerneldevice/dist/* $derpfestfolder/$kernelfolder/
+    fi
+    sleep 2
+}
+
+
+function builddevice() {
+    banner
+    echo -e "\e[1;37;44m Device: $1                        \e[0m"
+    checkernel $1
+    cd $derpfestfolder
+    echo
+    echo "- Building ROM with $jobs simultaneous processes..."
+    echo "Process started at `date`"
+    echo
+    SECONDS=0
+#     konsole -e "bash -c '. build/envsetup.sh && lunch lineage_$1-bp2a-user && sleep 5 && exit; exec bash'"
+    konsole -e "bash -c '. build/envsetup.sh && lunch lineage_$1-bp2a-user && mka derp -j $jobs && sleep 5 && exit; bash'"
+    elapsed_time=$SECONDS
+    echo
+    printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
+
+#     . build/envsetup.sh
+#     lunch lineage_$1-bp2a-user
+#     mka derp -j $jobs
+
+    #move files to more accessible folder
+    mkdir -p 00_latest_builds/$1
+    files=(DerpFest*.zip DerpFest*.sha256sum boot.img dtbo.img init_boot.img vendor_boot.img vendor_kernel_boot.img)
+    for item in "${files[@]}"; do
+        mv out/target/product/$1/$item 00_latest_builds/$1/
+    done
+
+    sleep 5
+    echo
+}
+
+
+function helpmsg(){
+    echo "Script to build DerpFest for Google Pixel 7 series"
+    echo
+    echo "Usage:"
+    echo " -d, --device <device> Specifies the device to build for (panther, cheetah, lynx or all)."
+    echo " -j, --jobs <jobs>     Specifies the maximum jobs when compiling."
+    echo "                       If not supplied, all processor threads will be used."
+    echo " -s, --sync-derp       Downloads DerpFest sources."
+    echo " -k, --sync-kernel     Downloads kernel sources."
+    echo " -p, --poweroff        Determines whether the computer should be turned off when finished."
+    echo
+    exit 1
+}
+
+
+
+# Using getopt for handling options
+OPTIONS=$(getopt -o d:j:skp -l device:,jobs:,sync-derp,sync-kernel,poweroff -- "$@")
+eval set -- "$OPTIONS"
+
+while true; do
+    case "$1" in
+        -d|--device)
+            device="$2"
+            shift 2
+            ;;
+        -s|--sync-derp)
+            syncderp=true
+            shift
+            ;;
+        -k|--sync-kernel)
+            synckernel=true
+            shift
+            ;;
+        -p|--poweroff)
+            poweroff=true
+            shift
+            ;;
+        -j|--jobs)
+            jobs="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+    esac
+done
+
+if [ -z $jobs ];then
+    jobs=$(nproc --all)
+fi
+
+if [ $syncderp = true ]; then
+    banner
+    echo
+    echo -e "\e[1;37;44m Syncing DerpFest                  \e[0m"
+    if [ ! -d $derpfestfolder ]; then
+        mkdir $derpfestfolder
+        cd $derpfestfolder
+        repo init -u https://github.com/DerpFest-AOSP/android_manifest.git -b 16 --git-lfs
+    else
+        cd $derpfestfolder
+    fi
+    konsole -e "bash -c 'repo sync --force-sync && sleep 5 && exit; exec bash'"
+fi
+
+if [ $synckernel = true ]; then
+    banner
+    echo
+    echo -e "\e[1;37;44m Syncing Pixel 7 series kernel     \e[0m"
+    if [ ! -d $kernelsrcfolder ]; then
+        echo "Creating folder..."
+        mkdir $kernelsrcfolder
+        cd $kernelsrcfolder
+        echo "Initialyzing repo..."
+        repo init -u https://github.com/SeanDabes/google-kernel-manifest.git -b $kernelversion
+    else
+        cd $kernelsrcfolder
+    fi
+    echo "Downloading sources..."
+    konsole -e "bash -c 'repo sync --force-sync && sleep 5 && exit; exec bash'"
+fi
+
+
+##############
+# echo "Device: $device"
+# echo "Sync: $sync"
+# echo "Poweroff: $poweroff"
+# echo "Jobs: $jobs"
+##############
+
+case "$device" in
+    "all")
+        builddevice panther
+        builddevice cheetah
+        builddevice lynx
+        ;;
+    "panther" | "cheetah" | "lynx" )
+        builddevice $device
+        ;;
+    *)
+        echo -e "\e[1;31mFAIL!! What device to build?\e[0m"
+        echo
+        helpmsg
+        exit 1
+        ;;
+esac
+
+if [ $poweroff = true ]; then systemctl poweroff; fi
+
+
+#TODO
+#KernelSU-Next > https://kernelsu-next.github.io/webpage/pages/installation.html
+#curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
+
+#SUSFS > https://gitlab.com/simonpunk/susfs4ksu/-/tree/gki-android14-6.1?ref_type=heads
+# cp susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch googlekernel/aosp/KernelSU/
+# cp susfs4ksu/kernel_patches/50_add_susfs_in_gki-android14-6.1.patch googlekernel/aosp/
+# cp susfs4ksu/kernel_patches/fs/* googlekernel/aosp/fs/
+# cp susfs4ksu/kernel_patches/include/linux/* googlekernel/aosp/include/linux/
+# cd googlekernel/aosp/KernelSU-Next
+# patch -p1 < 10_enable_susfs_for_ksu.patch
+# cd ..
+# patch -p1 < 50_add_susfs_in_gki-android14-6.1.patch
