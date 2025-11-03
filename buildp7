@@ -9,6 +9,7 @@ kernelversion="BP2A"
 kernelsrcfolder=`pwd`"/googlekernel"
 derpfestfolder=`pwd`"/derpfest"
 kernelfiles=true
+gcam="MGC_9.4.103_V20"
 
 function banner() {
     clear
@@ -91,7 +92,37 @@ function checkernel() {
 }
 
 
+function gcam() { # Change Google Camera for GCam by BSG
+    banner
+    echo -e "\e[1;37;44m MOD: GCAM by BSG                  \e[0m"
+    echo
+    echo "- Checking Google Camera..."
+    gcamhash="f64522e646e8cbebe503a5ce1eefb60e1596ae45fa5732dfc5f3569d717c91fb"
+    camerafile="`ls $derpfestfolder/vendor/google/camera/proprietary/product/priv-app/GoogleCamera/GoogleCamera.apk`"
+    bsgcamera="MGC_9.4.103_V20_MGC.apk"
+    if [ $(sha256sum $camerafile | cut -d ' ' -f 1) = $gcamhash ]; then
+        echo -e "\e[32mGCAM from BSG found\e[0m"
+    else
+        echo -e "\e[33mFound default GCam\e[0m"
+        echo
+        echo "Downloading GCAM from celzoazevedo.com..."
+        wget -nv --show-progress https://1-dontsharethislink.celsoazevedo.com/file/filesc/$bsgcamera
+        echo "Checking hash..."
+        if [ $(sha256sum $bsgcamera | cut -d ' ' -f 1) = $gcamhash ]; then
+            echo -e "\e[32mBSG Cam OK\e[0m"
+            echo "Copying to ROM tree..."
+            rm $camerafile
+            mv $bsgcamera $camerafile
+        else
+            echo "Couldn't download!!"
+        fi
+    fi
+    sleep 3
+}
+
+
 function builddevice() {
+    gcam
     banner
     echo -e "\e[1;37;44m Device: $1                        \e[0m"
     checkernel $1
@@ -206,6 +237,7 @@ if [ $synckernel = true ]; then
     echo "Downloading sources..."
     konsole -e "bash -c 'repo sync --force-sync && sleep 5 && exit; exec bash'"
 fi
+
 
 
 ##############
