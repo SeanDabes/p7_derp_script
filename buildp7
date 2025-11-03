@@ -8,6 +8,7 @@ jobs=""
 kernelversion="BP2A"
 kernelsrcfolder=`pwd`"/googlekernel"
 derpfestfolder=`pwd`"/derpfest"
+kernelfiles=true
 
 function banner() {
     clear
@@ -47,21 +48,44 @@ function checkernel() {
     kernelfolder="device/google/$kerneldevice-kernels/$kernelversion"
 
     echo
-    echo "- Checking if kernel has been already compiled..."
-    if [ -f "$derpfestfolder/$kernelfolder/boot.img" ]; then #TODO add the rest of the images to OR if
-        echo -e "\e[32mFolder $kernelfolder found\e[0m"
+    echo "- Checking if kernel is in the ROM tree..."
+    while IFS= read -r line; do
+        if [ ! -f "$derpfestfolder/$kernelfolder/$line" ]; then
+            kernelfiles=false
+            break
+        fi
+    done < "$kerneldevice-kernel-files"
+
+    if [ $kernelfiles = true ]; then
+        echo -e "\e[32mKernel files found\e[0m"
     else
-        echo -e "\e[33mFolder $kernelfolder not found, compiling kernel...\e[0m"
-        SECONDS=0
-        mkdir -p $derpfestfolder/$kernelfolder
-        cd $kernelsrcfolder
-#        ./build_$kerneldevice.sh #build kernel
-        konsole -e "bash -c './build_$kerneldevice.sh && sleep 5 && exit; exec bash'" #build kernel
-        elapsed_time=$SECONDS
-        printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
-        #rm -rf $kernelfolder
-        #cd $derpfestfolder
-        cp $kernelsrcfolder/out/$kerneldevice/dist/* $derpfestfolder/$kernelfolder/
+        echo -e "\e[33mFiles missing\e[0m"
+        echo
+        echo "- Checking if kernel is already compiled..."
+        while IFS= read -r line; do
+        if [ ! -f "$kernelsrcfolder/out/$kerneldevice/dist/$line" ]; then
+            kernelfiles=false
+            break
+        fi
+        done < "$kerneldevice-kernel-files"
+
+        if [ $kernelfiles = true ]; then
+            echo -e "\e[32mCompiled kernel files found\e[0m"
+            echo "Copying them to ROM tree..."
+            cp $kernelsrcfolder/out/$kerneldevice/dist/* $derpfestfolder/$kernelfolder/
+        else
+            echo -e "\e[33mFiles not found, compiling kernel...\e[0m"
+            SECONDS=0
+            mkdir -p $derpfestfolder/$kernelfolder
+            cd $kernelsrcfolder
+    #        ./build_$kerneldevice.sh #build kernel
+            konsole -e "bash -c './build_$kerneldevice.sh && sleep 5 && exit; exec bash'" #build kernel
+            elapsed_time=$SECONDS
+            printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
+            #rm -rf $kernelfolder
+            #cd $derpfestfolder
+            cp $kernelsrcfolder/out/$kerneldevice/dist/* $derpfestfolder/$kernelfolder/
+        fi
     fi
     sleep 2
 }
