@@ -10,6 +10,7 @@ kernelsrcfolder=`pwd`"/googlekernel"
 derpfestfolder=`pwd`"/derpfest"
 kernelfiles=true
 gcam="MGC_9.4.103_V20"
+gcamhash="f64522e646e8cbebe503a5ce1eefb60e1596ae45fa5732dfc5f3569d717c91fb"
 
 function banner() {
     clear
@@ -97,25 +98,30 @@ function gcam() { # Change Google Camera for GCam by BSG
     echo -e "\e[1;37;44m MOD: GCAM by BSG                  \e[0m"
     echo
     echo "- Checking Google Camera..."
-    gcamhash="f64522e646e8cbebe503a5ce1eefb60e1596ae45fa5732dfc5f3569d717c91fb"
-    camerafile="`ls $derpfestfolder/vendor/google/camera/proprietary/product/priv-app/GoogleCamera/GoogleCamera.apk`"
+    camerafolder="$derpfestfolder/vendor/google/camera/proprietary/product/priv-app/GoogleCamera"
+    camerafile="GoogleCamera.apk"
     bsgcamera="MGC_9.4.103_V20_MGC.apk"
-    if [ $(sha256sum $camerafile | cut -d ' ' -f 1) = $gcamhash ]; then
-        echo -e "\e[32mGCAM from BSG found\e[0m"
-    else
-        echo -e "\e[33mFound default GCam\e[0m"
+    if [ ! -f "$camerafolder/$camerafile" ] || [ $(sha256sum "$camerafolder/$camerafile" | cut -d ' ' -f 1) != $gcamhash ]; then
+        echo -e "\e[33mBSG Gcam not found\e[0m"
         echo
+        echo "- Checking ROM tree..."
+        for file in `find | grep $camerafile`; do
+            echo $file
+            rm $file
+        done
+        if [ -f $bsgcamera ]; then rm $bsgcamera; fi
         echo "Downloading GCAM from celzoazevedo.com..."
         wget -nv --show-progress https://1-dontsharethislink.celsoazevedo.com/file/filesc/$bsgcamera
         echo "Checking hash..."
         if [ $(sha256sum $bsgcamera | cut -d ' ' -f 1) = $gcamhash ]; then
             echo -e "\e[32mBSG Cam OK\e[0m"
             echo "Copying to ROM tree..."
-            rm $camerafile
-            mv $bsgcamera $camerafile
+            mv $bsgcamera "$camerafolder/$camerafile"
         else
             echo "Couldn't download!!"
         fi
+    else
+        echo -e "\e[32mGCAM from BSG found\e[0m"
     fi
     sleep 3
 }
