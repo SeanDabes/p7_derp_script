@@ -128,7 +128,7 @@ function gcam() { # Change Google Camera for GCam by BSG
 
 
 function builddevice() {
-    gcam
+    # gcam Module deactivated due to errors when starting up
     banner
     echo -e "\e[1;37;44m Device: $1                        \e[0m"
     checkernel $1
