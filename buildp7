@@ -48,7 +48,6 @@ function checkernel() {
     fi
 
     kernelfolder="device/google/$kerneldevice-kernels/$kernelversion"
-
     echo
     echo "- Checking if kernel is in the ROM tree..."
     while IFS= read -r line; do
@@ -131,7 +130,7 @@ function builddevice() {
     # gcam Module deactivated due to errors when starting up
     banner
     echo -e "\e[1;37;44m Device: $1                        \e[0m"
-    checkernel $1
+    #checkernel $1 Module deactivated due to move to LineageOS kernel sources
     cd $derpfestfolder
     echo
     echo "- Building ROM with $jobs simultaneous processes..."
