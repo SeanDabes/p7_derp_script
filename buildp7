@@ -3,6 +3,7 @@
 syncderp=false
 synckernel=false
 poweroff=false
+root=false
 device=""
 jobs=""
 kernelversion="6.1"
@@ -89,6 +90,7 @@ function checkernel() {
             cp $kernelsrcfolder/out/$kerneldevice/dist/* $derpfestfolder/$kernelfolder/
         fi
     fi
+    cd $rootfolder
     sleep 2
 }
 
@@ -152,6 +154,47 @@ function builddevice() {
     echo
 }
 
+function rootdevice(){
+    banner
+    echo -e "\e[1;37;44m Rooting: $1                       \e[0m"
+    cd $derpfestfolder/00_latest_builds/$1/
+    if [ ! -f boot.img ]; then
+        echo -e "\e[1;31mboot.img not found for $1\e[0m"
+        exit
+    fi
+
+    echo
+    echo "Getting magiskboot..."
+    curl -s https://api.github.com/repos/topjohnwu/magisk/releases/latest | grep "browser_download_url.*apk" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+    unzip Magisk*.apk lib/x86_64/libmagiskboot.so
+    mv $(find | grep libmagiskboot.so) magiskboot
+    rm -rf lib
+    rm Magisk*.apk
+    chmod +x magiskboot
+
+    echo
+    echo "Getting Sultan Wild Kernel..."
+    curl -s https://api.github.com/repos/WildKernels/Sultan_KernelSU_SUSFS/releases/latest | grep "browser_download_url.*gs201" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+    sultanfile="$(ls *gs201*WKSU*.zip)"
+    if [ -f $sultanfile ]; then
+        unzip $sultanfile Image.lz4
+    else
+        echo "Sultan Wild Kernel not found. Download it and try again"
+        exit
+    fi
+
+    echo
+    echo "Unpacking original boot.img..."
+    ./magiskboot unpack boot.img
+    echo
+    echo "Modifying kernel..."
+    mv -f Image.lz4 kernel
+    echo
+    echo "Repacking kernel..."
+    ./magiskboot repack boot.img
+    mv new-boot.img boot_$1_WKSU_SUSFS.img
+    rm kernel magiskboot $sultanfile
+}
 
 function helpmsg(){
     echo "Script to build DerpFest for Google Pixel 7 series"
@@ -162,6 +205,7 @@ function helpmsg(){
     echo "                       If not supplied, all processor threads will be used."
     echo " -s, --sync-derp       Downloads DerpFest sources."
     echo " -k, --sync-kernel     Downloads kernel sources."
+    echo " -r, --root            Creates Sultan Wild Kernel for the selected device."
     echo " -p, --poweroff        Determines whether the computer should be turned off when finished."
     echo
     exit 1
@@ -170,7 +214,7 @@ function helpmsg(){
 
 
 # Using getopt for handling options
-OPTIONS=$(getopt -o d:j:skp -l device:,jobs:,sync-derp,sync-kernel,poweroff -- "$@")
+OPTIONS=$(getopt -o d:j:skpr -l device:,jobs:,sync-derp,sync-kernel,poweroff,root -- "$@")
 eval set -- "$OPTIONS"
 
 while true; do
@@ -194,6 +238,10 @@ while true; do
         -j|--jobs)
             jobs="$2"
             shift 2
+            ;;
+        -r|--root)
+            root=true
+            shift
             ;;
         --)
             shift
@@ -220,6 +268,8 @@ if [ $syncderp = true ]; then
     konsole -e "bash -c 'repo sync --force-sync && sleep 5 && exit; exec bash'"
 fi
 
+cd $rootfolder
+
 if [ $synckernel = true ]; then
     banner
     echo
@@ -237,15 +287,20 @@ if [ $synckernel = true ]; then
     konsole -e "bash -c 'repo sync --force-sync && sleep 5 && exit; exec bash'"
 fi
 
+cd $rootfolder
 
 case "$device" in
     "all")
         builddevice panther
+        if [ $root = true ]; then rootdevice panther; fi
         builddevice cheetah
+        if [ $root = true ]; then rootdevice cheetah; fi
         builddevice lynx
+        if [ $root = true ]; then rootdevice lynx; fi
         ;;
     "panther" | "cheetah" | "lynx" )
         builddevice $device
+        if [ $root = true ]; then rootdevice $device; fi
         ;;
     *)
         echo -e "\e[1;31mFAIL!! What device to build?\e[0m"
