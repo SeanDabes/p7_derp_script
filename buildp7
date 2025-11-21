@@ -6,8 +6,9 @@ poweroff=false
 device=""
 jobs=""
 kernelversion="6.1"
-kernelsrcfolder=`pwd`"/googlekernel"
-derpfestfolder=`pwd`"/derpfest"
+rootfolder=`pwd`
+kernelsrcfolder=$rootfolder"/googlekernel"
+derpfestfolder=$rootfolder"/derpfest"
 kernelfiles=true
 gcam="MGC_9.4.103_V20"
 gcamhash="f64522e646e8cbebe503a5ce1eefb60e1596ae45fa5732dfc5f3569d717c91fb"
@@ -135,17 +136,10 @@ function builddevice() {
     echo
     echo "- Building ROM with $jobs simultaneous processes..."
     echo "Process started at `date`"
-    echo
     SECONDS=0
-#     konsole -e "bash -c '. build/envsetup.sh && lunch lineage_$1-bp2a-user && sleep 5 && exit; exec bash'"
     konsole -e "bash -c '. build/envsetup.sh && lunch lineage_$1-bp2a-user && mka derp -j $jobs && sleep 5 && exit; bash'"
     elapsed_time=$SECONDS
-    echo
     printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
-
-#     . build/envsetup.sh
-#     lunch lineage_$1-bp2a-user
-#     mka derp -j $jobs
 
     #move files to more accessible folder
     mkdir -p 00_latest_builds/$1
@@ -244,14 +238,6 @@ if [ $synckernel = true ]; then
 fi
 
 
-
-##############
-# echo "Device: $device"
-# echo "Sync: $sync"
-# echo "Poweroff: $poweroff"
-# echo "Jobs: $jobs"
-##############
-
 case "$device" in
     "all")
         builddevice panther
@@ -270,18 +256,3 @@ case "$device" in
 esac
 
 if [ $poweroff = true ]; then systemctl poweroff; fi
-
-
-#TODO
-#KernelSU-Next > https://kernelsu-next.github.io/webpage/pages/installation.html
-#curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
-
-#SUSFS > https://gitlab.com/simonpunk/susfs4ksu/-/tree/gki-android14-6.1?ref_type=heads
-# cp susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch googlekernel/aosp/KernelSU/
-# cp susfs4ksu/kernel_patches/50_add_susfs_in_gki-android14-6.1.patch googlekernel/aosp/
-# cp susfs4ksu/kernel_patches/fs/* googlekernel/aosp/fs/
-# cp susfs4ksu/kernel_patches/include/linux/* googlekernel/aosp/include/linux/
-# cd googlekernel/aosp/KernelSU-Next
-# patch -p1 < 10_enable_susfs_for_ksu.patch
-# cd ..
-# patch -p1 < 50_add_susfs_in_gki-android14-6.1.patch
