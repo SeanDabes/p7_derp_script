@@ -29,72 +29,6 @@ function banner() {
     echo
 }
 
-
-function checkernel() {
-    echo
-    echo "- Checking kernel sources..."
-    if [ ! -d $kernelsrcfolder ]; then
-        echo -e "\e[1;31mWARNING!! Kernel source folder not found!!"
-        echo -e "Execute the script again with the -k option to download kernel sources\e[0m"
-        exit
-    else
-        echo -e "\e[32mKernel sources found\e[0m"
-    fi
-    sleep 2
-
-    kerneldevice=""
-    if [ $1 == "panther" ] || [ $1 == "cheetah" ]; then
-        kerneldevice="pantah"
-    else
-        kerneldevice="$1" #Lynx
-    fi
-
-    kernelfolder="device/google/$kerneldevice-kernels/$kernelversion"
-    echo
-    echo "- Checking if kernel is in the ROM tree..."
-    while IFS= read -r line; do
-        if [ ! -f "$derpfestfolder/$kernelfolder/$line" ]; then
-            kernelfiles=false
-            break
-        fi
-    done < "$kerneldevice-kernel-files"
-
-    if [ $kernelfiles = true ]; then
-        echo -e "\e[32mKernel files found\e[0m"
-    else
-        echo -e "\e[33mFiles missing\e[0m"
-        echo
-        echo "- Checking if kernel is already compiled..."
-        while IFS= read -r line; do
-        if [ ! -f "$kernelsrcfolder/out/$kerneldevice/dist/$line" ]; then
-            kernelfiles=false
-            break
-        fi
-        done < "$kerneldevice-kernel-files"
-
-        if [ $kernelfiles = true ]; then
-            echo -e "\e[32mCompiled kernel files found\e[0m"
-            echo "Copying them to ROM tree..."
-            cp $kernelsrcfolder/out/$kerneldevice/dist/* $derpfestfolder/$kernelfolder/
-        else
-            echo -e "\e[33mFiles not found, compiling kernel...\e[0m"
-            SECONDS=0
-            mkdir -p $derpfestfolder/$kernelfolder
-            cd $kernelsrcfolder
-    #        ./build_$kerneldevice.sh #build kernel
-            konsole -e "bash -c './build_$kerneldevice.sh && sleep 5 && exit; exec bash'" #build kernel
-            elapsed_time=$SECONDS
-            printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
-            #rm -rf $kernelfolder
-            #cd $derpfestfolder
-            cp $kernelsrcfolder/out/$kerneldevice/dist/* $derpfestfolder/$kernelfolder/
-        fi
-    fi
-    cd $rootfolder
-    sleep 2
-}
-
-
 function gcam() { # Change Google Camera for GCam by BSG
     banner
     echo -e "\e[1;37;44m MOD: GCAM by BSG                  \e[0m"
@@ -160,7 +94,7 @@ function rootdevice(){
     cd $derpfestfolder/00_latest_builds/$1/
     if [ ! -f boot.img ]; then
         echo -e "\e[1;31mboot.img not found for $1\e[0m"
-        exit
+        return
     fi
 
     echo
@@ -180,7 +114,7 @@ function rootdevice(){
         unzip $sultanfile Image.lz4
     else
         echo "Sultan Wild Kernel not found. Download it and try again"
-        exit
+        return
     fi
 
     echo
@@ -204,17 +138,14 @@ function helpmsg(){
     echo " -j, --jobs <jobs>     Specifies the maximum jobs when compiling."
     echo "                       If not supplied, all processor threads will be used."
     echo " -s, --sync-derp       Downloads DerpFest sources."
-    echo " -k, --sync-kernel     Downloads kernel sources."
     echo " -r, --root            Creates Sultan Wild Kernel for the selected device."
     echo " -p, --poweroff        Determines whether the computer should be turned off when finished."
     echo
     exit 1
 }
 
-
-
 # Using getopt for handling options
-OPTIONS=$(getopt -o d:j:skpr -l device:,jobs:,sync-derp,sync-kernel,poweroff,root -- "$@")
+OPTIONS=$(getopt -o d:j:spr -l device:,jobs:,sync-derp,poweroff,root -- "$@")
 eval set -- "$OPTIONS"
 
 while true; do
@@ -225,10 +156,6 @@ while true; do
             ;;
         -s|--sync-derp)
             syncderp=true
-            shift
-            ;;
-        -k|--sync-kernel)
-            synckernel=true
             shift
             ;;
         -p|--poweroff)
@@ -270,25 +197,6 @@ fi
 
 cd $rootfolder
 
-if [ $synckernel = true ]; then
-    banner
-    echo
-    echo -e "\e[1;37;44m Syncing Pixel 7 series kernel     \e[0m"
-    if [ ! -d $kernelsrcfolder ]; then
-        echo "Creating folder..."
-        mkdir $kernelsrcfolder
-        cd $kernelsrcfolder
-        echo "Initialyzing repo..."
-        repo init -u https://github.com/SeanDabes/google-kernel-manifest.git -b $kernelversion
-    else
-        cd $kernelsrcfolder
-    fi
-    echo "Downloading sources..."
-    konsole -e "bash -c 'repo sync --force-sync && sleep 5 && exit; exec bash'"
-fi
-
-cd $rootfolder
-
 case "$device" in
     "all")
         builddevice panther
@@ -303,6 +211,7 @@ case "$device" in
         if [ $root = true ]; then rootdevice $device; fi
         ;;
     *)
+        echo
         echo -e "\e[1;31mFAIL!! What device to build?\e[0m"
         echo
         helpmsg
