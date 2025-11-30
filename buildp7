@@ -93,13 +93,17 @@ function builddevice() {
 }
 
 function rootdevice(){
-    banner
     echo -e "\e[1;37;44m Rooting: $1                       \e[0m"
     cd $derpfestfolder/00_latest_builds/$1/
     if [ ! -f boot.img ]; then
         echo -e "\e[1;31mboot.img not found for $1\e[0m"
         return
     fi
+
+    local rootfolder="root"
+    if [ ! -d "$rootfolder" ]; then rm -rf "$rootfolder"; fi
+    mkdir $rootfolder
+    cd $rootfolder
 
     echo
     echo "Getting magiskboot..."
@@ -132,6 +136,10 @@ function rootdevice(){
     ./magiskboot repack boot.img
     mv new-boot.img boot_$1_WKSU_SUSFS.img
     rm kernel magiskboot $sultanfile
+
+    echo
+    echo "Getting Sultan Wild root manager..."
+    curl -s https://api.github.com/repos/WildKernels/Wild_KSU/releases/latest | grep "browser_download_url" | cut -d : -f 2,3 | tr -d \" | wget -qi -
 }
 
 function rmlines(){ # file, key_pattern, end_pattern
@@ -295,9 +303,7 @@ while true; do
     esac
 done
 
-if [ -z $jobs ];then
-    jobs=$(nproc --all)
-fi
+if [ -z $jobs ]; then jobs=$(nproc --all); fi
 
 if [ $syncderp = true ]; then
     banner
