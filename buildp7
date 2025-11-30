@@ -13,6 +13,10 @@ derpfestfolder=$rootfolder"/derpfest"
 kernelfiles=true
 gcam="MGC_9.4.103_V20"
 gcamhash="f64522e646e8cbebe503a5ce1eefb60e1596ae45fa5732dfc5f3569d717c91fb"
+debloatmkfile=$derpfestfolder/vendor/google/gms/gms-vendor.mk
+debloatmkfilebkp=$debloatmkfile.bak
+debloatbpfile=$derpfestfolder/vendor/google/gms/Android.bp
+debloatbpfilebkp=$debloatbpfile.bak
 
 function banner() {
     clear
@@ -73,7 +77,7 @@ function builddevice() {
     echo "- Building ROM with $jobs simultaneous processes..."
     echo "Process started at `date`"
     SECONDS=0
-    konsole -e "bash -c '. build/envsetup.sh && lunch lineage_$1-bp2a-user && mka derp -j $jobs && sleep 5 && exit; bash'"
+    konsole -e "bash -c '. build/envsetup.sh && lunch lineage_$1-bp2a-user && export RELAX_USES_LIBRARY_CHECK=true && mka derp -j $jobs && sleep 5 && exit; bash'"
     elapsed_time=$SECONDS
     printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
 
@@ -128,6 +132,120 @@ function rootdevice(){
     ./magiskboot repack boot.img
     mv new-boot.img boot_$1_WKSU_SUSFS.img
     rm kernel magiskboot $sultanfile
+}
+
+function rmlines(){ # file, key_pattern, end_pattern
+    local tempfile="temp.bp"
+    local line_number1=0
+    local line_number2=0
+    local line_number3=0
+    local found_line1=0
+    local found_line2=0
+    local start=0
+    local end=0
+
+    while IFS= read -r line; do
+        line_number1=$((line_number1 + 1))
+
+        if [[ "$line" == *"$2"* ]]; then
+            found_line1=$line_number1
+            break
+        fi
+    done < "$1"
+
+    while IFS= read -r line; do
+        line_number2=$((line_number2 + 1))
+
+        if [[ "$line" == *"$3"* ]]; then
+            if [ "$line_number2" -lt "$found_line1" ]; then
+                continue
+            else
+                found_line2=$line_number2
+                break
+            fi
+        fi
+    done < "$1"
+
+    start=$(($found_line1 - 1))
+    end=$(($found_line2 - 1))
+
+    line_number=0
+
+    while IFS= read -r line; do
+        line_number3=$((line_number3 + 1))
+
+        if (( line_number3 < start || line_number3 > end )); then
+            echo "$line" >> "$tempfile"
+        fi
+    done < "$1"
+
+    mv "$tempfile" "$1"
+}
+
+function debloat(){
+    echo -e "\e[1;37;44m Debloating...                     \e[0m"
+    cp "$debloatmkfile" "$debloatmkfilebkp"
+    cp "$debloatbpfile" "$debloatbpfilebkp"
+    local debloatfiles=(        # Comment to keep in ROM
+        #GoogleExtShared
+        GooglePrintRecommendationService
+        #GooglePackageInstaller
+        TagGoogle
+        CalculatorGoogle
+        CalendarGoogle
+        #Chrome64
+        Drive
+        Gemini
+        Gmail2
+        #GoogleContacts
+        GoogleLocationHistory
+        #LatinImeGoogle
+        Maps
+        Photos
+        #SpeechServicesByGoogle
+        #TrichromeLibrary64
+        #WebViewGoogle64
+        YouTube
+        talkback
+        #AndroidAutoStub
+        #ConfigUpdater
+        #CrossDeviceServices
+        #DeskClockGoogle
+        FamilyLinkParentalControls
+        #FilesGoogle
+        #GWP
+        #GmsCore
+        #AndroidPlatformServices
+        #GoogleDialer
+        #GoogleOneTimeInitializer
+        #GooglePartnerSetup
+        #GoogleRestore
+        #Messages
+        PersonalSafety
+        #Phonesky
+        #Turbo
+        #Velvet
+        Wellbeing
+        EmergencyInfoGms
+        GoogleFeedback
+        #GoogleServicesFramework
+        #SetupWizard
+        #com.google.android.dialer.support
+    )
+    echo "Removing unnecessary apps from Google..."
+    for item in "${debloatfiles[@]}"; do
+        echo " > $item"
+        sed -i "/$item/d" $debloatmkfile > /dev/null 2>&1
+        rmlines $debloatbpfile $item android_app_import
+    done
+    sleep 5
+}
+
+function undodebloat(){ # To avoid issues when repo sync
+    rm $debloatmkfile
+    mv $debloatmkfilebkp $debloatmkfile
+    rm $debloatbpfile
+    mv $debloatbpfilebkp $debloatbpfile
 }
 
 function helpmsg(){
@@ -199,6 +317,8 @@ cd $rootfolder
 
 case "$device" in
     "all")
+        banner
+        debloat
         builddevice panther
         if [ $root = true ]; then rootdevice panther; fi
         builddevice cheetah
@@ -207,6 +327,8 @@ case "$device" in
         if [ $root = true ]; then rootdevice lynx; fi
         ;;
     "panther" | "cheetah" | "lynx" )
+        banner
+        debloat
         builddevice $device
         if [ $root = true ]; then rootdevice $device; fi
         ;;
@@ -218,5 +340,7 @@ case "$device" in
         exit 1
         ;;
 esac
+
+if [ -f $debloatmkfilebkp ] || [ -f $debloatbpfilebkp ]; then undodebloat; fi
 
 if [ $poweroff = true ]; then systemctl poweroff; fi
