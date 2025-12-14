@@ -69,9 +69,7 @@ function gcam() { # Change Google Camera for GCam by BSG
 
 function builddevice() {
     # gcam Module deactivated due to errors when starting up
-    banner
     echo -e "\e[1;37;44m Device: $1                        \e[0m"
-    #checkernel $1 Module deactivated due to move to LineageOS kernel sources
     cd $derpfestfolder
     echo
     echo "- Building ROM with $jobs simultaneous processes..."
