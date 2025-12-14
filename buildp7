@@ -100,8 +100,8 @@ function rootdevice(){
         return
     fi
 
-    local rootfolder="root"
-    if [ ! -d "$rootfolder" ]; then rm -rf "$rootfolder"; fi
+    local rootfolder=`pwd`"/root"
+    if [ -d "$rootfolder" ]; then rm -rf "$rootfolder"; fi
     mkdir $rootfolder
     cd $rootfolder
 
@@ -111,7 +111,7 @@ function rootdevice(){
     unzip Magisk*.apk lib/x86_64/libmagiskboot.so
     mv $(find | grep libmagiskboot.so) magiskboot
     rm -rf lib
-    rm Magisk*.apk
+    rm *.apk
     chmod +x magiskboot
 
     echo
@@ -127,6 +127,7 @@ function rootdevice(){
 
     echo
     echo "Unpacking original boot.img..."
+    cp ../boot.img boot.img
     ./magiskboot unpack boot.img
     echo
     echo "Modifying kernel..."
@@ -135,7 +136,7 @@ function rootdevice(){
     echo "Repacking kernel..."
     ./magiskboot repack boot.img
     mv new-boot.img boot_$1_WKSU_SUSFS.img
-    rm kernel magiskboot $sultanfile
+    rm kernel magiskboot $sultanfile boot.img
 
     echo
     echo "Getting Sultan Wild root manager..."
