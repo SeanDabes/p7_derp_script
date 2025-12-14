@@ -7,6 +7,9 @@ root=false
 device=""
 jobs=""
 kernelversion="6.1"
+android_version="bp3a"
+los_version="lineage-23.1"
+los_kernel_manifest="https://github.com/LineageOS/"
 rootfolder=`pwd`
 kernelsrcfolder=$rootfolder"/googlekernel"
 derpfestfolder=$rootfolder"/derpfest"
@@ -75,7 +78,7 @@ function builddevice() {
     echo "- Building ROM with $jobs simultaneous processes..."
     echo "Process started at `date`"
     SECONDS=0
-    konsole -e "bash -c '. build/envsetup.sh && lunch lineage_$1-bp2a-user && export RELAX_USES_LIBRARY_CHECK=true && mka derp -j $jobs && sleep 5 && exit; bash'"
+    konsole -e "bash -c '. build/envsetup.sh && export KERNEL_MANIFEST_BRANCH=$los_version && export KERNEL_MANIFEST_REMOTE=$los_kernel_manifest && lunch lineage_$1-$android_version-user && mka derp -j $jobs && sleep 5 && exit; bash'"
     elapsed_time=$SECONDS
     printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
 
