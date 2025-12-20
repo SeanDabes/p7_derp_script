@@ -1,51 +1,70 @@
 #!/bin/bash
 
+ERROR=false
 syncderp=false
 synckernel=false
 poweroff=false
 root=false
 device=""
 jobs=""
-kernelversion="6.1"
-android_version="bp3a"
-los_version="lineage-23.1"
-los_kernel_manifest="https://github.com/LineageOS/"
-rootfolder=`pwd`
-kernelsrcfolder=$rootfolder"/googlekernel"
-derpfestfolder=$rootfolder"/derpfest"
-kernelfiles=true
-gcam="MGC_9.4.103_V20"
-gcamhash="f64522e646e8cbebe503a5ce1eefb60e1596ae45fa5732dfc5f3569d717c91fb"
-debloatmkfile=$derpfestfolder/vendor/google/gms/gms-vendor.mk
-debloatmkfilebkp=$debloatmkfile.bak
-debloatbpfile=$derpfestfolder/vendor/google/gms/Android.bp
-debloatbpfilebkp=$debloatbpfile.bak
+start_time=`date`
 
-function banner() {
-    clear
-    echo "▓█████▄ ▓█████  ██▀███   ██▓███    █████▒▓█████   ██████ ▄▄▄█████▓"
-    echo "▒██▀ ██▌▓█   ▀ ▓██ ▒ ██▒▓██░  ██▒▓██   ▒ ▓█   ▀ ▒██    ▒ ▓  ██▒ ▓▒"
-    echo "░██   █▌▒███   ▓██ ░▄█ ▒▓██░ ██▓▒▒████ ░ ▒███   ░ ▓██▄   ▒ ▓██░ ▒░"
-    echo "░▓█▄   ▌▒▓█  ▄ ▒██▀▀█▄  ▒██▄█▓▒ ▒░▓█▒  ░ ▒▓█  ▄   ▒   ██▒░ ▓██▓ ░ "
-    echo "░▒████▓ ░▒████▒░██▓ ▒██▒▒██▒ ░  ░░▒█░    ░▒████▒▒██████▒▒  ▒██▒ ░ "
-    echo " ▒▒▓  ▒ ░░ ▒░ ░░ ▒▓ ░▒▓░▒▓▒░ ░  ░ ▒ ░    ░░ ▒░ ░▒ ▒▓▒ ▒ ░  ▒ ░░   "
-    echo " ░ ▒  ▒  ░ ░  ░  ░▒ ░ ▒░░▒ ░      ░       ░ ░  ░░ ░▒  ░ ░    ░    "
-    echo " ░ ░  ░    ░     ░░   ░ ░░        ░ ░       ░   ░  ░  ░    ░      "
-    echo "   ░       ░  ░   ░                         ░  ░      ░           "
-    echo " ░                                                                "
-    echo
-}
+android_version="bp2a"
+derp_repo="https://github.com/DerpFest-AOSP/"
+derp_branch="16"
+los_branch="lineage-23.0"
+los_repo="https://github.com/LineageOS/"
+local_manifest_url="git@github.com:SeanDabes/derp_local_manifest_p7.git"
+
+local_manifest_folder="derp_local_manifest_p7"
+local_manifest_file="$local_manifest_folder/roomservice_seandabes.xml"
+rootfolder=`pwd`
+toolsfolder="$rootfolder/tools"
+banner_script="$toolsfolder/banner.sh"
+monitor_script="$toolsfolder/monitor.sh"
+derpfestfolder="$rootfolder/../derpfest" # Change for own one
+out_rom_folder="$derpfestfolder/00_latest_builds/"
+
+debloatmkfile="$derpfestfolder/vendor/google/gms/gms-vendor.mk"
+debloatmkfilebkp="$debloatmkfile.bak"
+debloatbpfile="$derpfestfolder/vendor/google/gms/Android.bp"
+debloatbpfilebkp="$debloatbpfile.bak"
+
+# Terminal Colors
+readonly BLUE='\033[1;34m'
+readonly GREEN='\033[1;32m'
+readonly YELLOW='\033[1;33m'
+readonly RED='\033[1;31m'
+readonly CYAN='\033[1;36m'
+readonly MAGENTA='\033[1;35m'
+readonly GRAY='\033[1;90m'
+readonly WHITE='\033[1;37m'
+readonly NOCOLOR='\033[0m'
+readonly BOLD='\033[1m'
+readonly DIM='\033[2m'
+readonly WHITEONBLUE='\033[1;37;44m'
+readonly WHITEONMAGENTA='\033[1;37;45m'
+readonly WHITEONYELLOW='\033[1;37;43m'
+readonly WHITEONCYAN='\033[1;37;46m'
+readonly WHITEONRED='\033[1;37;41m'
+colors=("$BLUE" "$GREEN" "$YELLOW" "$RED" "$CYAN" "$MAGENTA" "$GRAY" "$WHITE")
+
+chmod +x $banner_script
+chmod +x $monitor_script
+
+SECONDS=0 # Timer start
 
 function gcam() { # Change Google Camera for GCam by BSG
     banner
-    echo -e "\e[1;37;44m MOD: GCAM by BSG                  \e[0m"
+    echo -e "${WHITEONBLUE} MOD: GCAM by BSG                  ${NOCOLOR}"
     echo
     echo "- Checking Google Camera..."
-    camerafolder="$derpfestfolder/vendor/google/camera/proprietary/product/priv-app/GoogleCamera"
-    camerafile="GoogleCamera.apk"
-    bsgcamera="MGC_9.4.103_V20_MGC.apk"
+    local camerafolder="$derpfestfolder/vendor/google/camera/proprietary/product/priv-app/GoogleCamera"
+    local camerafile="GoogleCamera.apk"
+    local bsgcamera="MG9.4.103_V20_MGC.apk"
+    local gcamhash="f64522e646e8cbebe503a5ce1eefb60e1596ae45fa5732dfc5f3569d717c91fb"
     if [ ! -f "$camerafolder/$camerafile" ] || [ $(sha256sum "$camerafolder/$camerafile" | cut -d ' ' -f 1) != $gcamhash ]; then
-        echo -e "\e[33mBSG Gcam not found\e[0m"
+        echo -e "${YELLOW} Gcam not found${NOCOLOR}"
         echo
         echo "- Checking ROM tree..."
         for file in `find | grep $camerafile`; do
@@ -57,36 +76,88 @@ function gcam() { # Change Google Camera for GCam by BSG
         wget -nv --show-progress https://1-dontsharethislink.celsoazevedo.com/file/filesc/$bsgcamera
         echo "Checking hash..."
         if [ $(sha256sum $bsgcamera | cut -d ' ' -f 1) = $gcamhash ]; then
-            echo -e "\e[32mBSG Cam OK\e[0m"
+            echo -e "${GREEN}Cam OK${NOCOLOR}"
             echo "Copying to ROM tree..."
             mv $bsgcamera "$camerafolder/$camerafile"
         else
             echo "Couldn't download!!"
         fi
     else
-        echo -e "\e[32mGCAM from BSG found\e[0m"
+        echo -e "${GREEN}GCAM from BSG found${NOCOLOR}"
     fi
     sleep 3
 }
 
+function wait_task(){
+    local marquee_anim=(
+        '▕                    ▏'
+        '▕▒                   ▏'
+        '▕▒▒                  ▏'
+        '▕▒▒▒                 ▏'
+        '▕ ▒▒▒                ▏'
+        '▕  ▒▒▒               ▏'
+        '▕   ▒▒▒              ▏'
+        '▕    ▒▒▒             ▏'
+        '▕     ▒▒▒            ▏'
+        '▕      ▒▒▒           ▏'
+        '▕       ▒▒▒          ▏'
+        '▕        ▒▒▒         ▏'
+        '▕         ▒▒▒        ▏'
+        '▕          ▒▒▒       ▏'
+        '▕           ▒▒▒      ▏'
+        '▕            ▒▒▒     ▏'
+        '▕             ▒▒▒    ▏'
+        '▕              ▒▒▒   ▏'
+        '▕               ▒▒▒  ▏'
+        '▕                ▒▒▒ ▏'
+        '▕                 ▒▒▒▏'
+        '▕                  ▒▒▏'
+        '▕                   ▒▏'
+        )
+    while [ ! -f /tmp/end_task ]; do
+        for i in "${marquee_anim[@]}" ; do
+            printf "\r%s %s" "$i"
+            sleep 0.1
+        done
+    done
+
+    echo -e "\n"
+}
 
 function builddevice() {
-    # gcam Module deactivated due to errors when starting up
-    echo -e "\e[1;37;44m Device: $1                        \e[0m"
+    bash $banner_script nowait $1 $android_version $los_branch
     cd $derpfestfolder
-    echo
-    echo "- Building ROM with $jobs simultaneous processes..."
-    echo "Process started at `date`"
-    SECONDS=0
-    konsole -e "bash -c '. build/envsetup.sh && export KERNEL_MANIFEST_BRANCH=$los_version && export KERNEL_MANIFEST_REMOTE=$los_kernel_manifest && lunch lineage_$1-$android_version-user && mka derp -j $jobs && sleep 5 && exit; bash'"
-    elapsed_time=$SECONDS
-    printf "Elapsed time: %02d:%02d:%02d\n" $((elapsed_time / 3600)) $(( (elapsed_time % 3600) / 60 )) $((elapsed_time % 60))
 
-    #move files to more accessible folder
-    mkdir -p 00_latest_builds/$1
-    files=(DerpFest*.zip DerpFest*.sha256sum boot.img dtbo.img init_boot.img vendor_boot.img vendor_kernel_boot.img)
+    #TMUX-SESSION-----------------------
+    tmux new-session -d -s derp_session
+    tmux split-window -v
+    tmux split-window -h -t 0
+    tmux resize-pane -t 2 -U 40
+    tmux split-window -v -t 2
+    tmux resize-pane -t 3 -D 30
+    tmux select-pane -t 2
+    tmux send-keys -t 0 "bash $banner_script wait $1 $android_version $los_branch; echo 'Process started at `date`'" C-m
+    tmux send-keys -t 1 "clear; echo; echo -e '${WHITEONMAGENTA} Building ROM with $jobs simultaneous processes... ${NOCOLOR}'; echo; bash -c '$(declare -f wait_task); wait_task'" C-m
+    tmux send-keys -t 2 "clear; . build/envsetup.sh && export KERNEL_MANIFEST_BRANCH=$los_branch &&  export KERNEL_MANIFEST_REMOTE=$los_repo && lunch lineage_$1-$android_version-user &&  mka derp -j $jobs; touch /tmp/end_task" C-m
+#     tmux send-keys -t 3 "htop -p --readonly" C-m
+    tmux send-keys -t 3 "bash $monitor_script" C-m
+    tmux send-keys -t 1 "clear; echo; echo -e ' ${BLUE}Cooling down...${NOCOLOR}'; sleep 5; rm /tmp/end_task; tmux kill-session -t derp_session" C-m
+
+    tmux attach-session -t derp_session
+
+    #TMUX-SESSION-END-------------------
+
+    # Move files to more accessible folder
+    local srcfolder="out/target/product/$1/"
+    local endfolder="$out_rom_folder$1/"
+    mkdir -p $endfolder
+    local files=(DerpFest*.zip DerpFest*.sha256sum boot.img dtbo.img init_boot.img vendor_boot.img vendor_kernel_boot.img)
     for item in "${files[@]}"; do
-        mv out/target/product/$1/$item 00_latest_builds/$1/
+        if [ -f $srcfolder$item ]; then
+            mv $srcfolder$item $endfolder
+        else
+            ERROR=true
+        fi
     done
 
     sleep 5
@@ -94,10 +165,11 @@ function builddevice() {
 }
 
 function rootdevice(){
-    echo -e "\e[1;37;44m Rooting: $1                       \e[0m"
+    bash $banner_script nowait $1 $android_version $los_branch
+    echo -e "${WHITEONBLUE} Rooting: $1                       ${NOCOLOR}"
     cd $derpfestfolder/00_latest_builds/$1/
     if [ ! -f boot.img ]; then
-        echo -e "\e[1;31mboot.img not found for $1\e[0m"
+        echo -e "${RED}.img not found for $1${NOCOLOR}"
         return
     fi
 
@@ -193,7 +265,7 @@ function rmlines(){ # file, key_pattern, end_pattern
 }
 
 function debloat(){
-    echo -e "\e[1;37;44m Debloating...                     \e[0m"
+    echo -e "${WHITEONBLUE} Debloating...                     ${NOCOLOR}"
     cp "$debloatmkfile" "$debloatmkfilebkp"
     cp "$debloatbpfile" "$debloatbpfilebkp"
     local debloatfiles=(        # Comment to keep in ROM
@@ -258,6 +330,22 @@ function undodebloat(){ # To avoid issues when repo sync
     mv $debloatbpfilebkp $debloatbpfile
 }
 
+function materialfiles(){
+    local workingfolder="$derpfestfolder/vendor/app/MaterialFiles"
+    local apk="MaterialFiles.apk"
+    if [ ! -d $workingfolder ]; then mkdir $workingfolder; fi
+    cd $workingfolder
+    echo
+    if [ -f $apk ]; then
+        echo "MaterialFiles.apk found, removing and downloading again"
+        rm $apk
+    fi
+    echo "Getting MaterialFiles apk..."
+    curl -s https://api.github.com/repos/zhanghai/materialFiles/releases/latest | grep "browser_download_url" | grep "universal" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+    mv *.apk $apk
+    cd $rootfolder
+}
+
 function helpmsg(){
     echo "Script to build DerpFest for Google Pixel 7 series"
     echo
@@ -308,47 +396,109 @@ done
 if [ -z $jobs ]; then jobs=$(nproc --all); fi
 
 if [ $syncderp = true ]; then
-    banner
-    echo
-    echo -e "\e[1;37;44m Syncing DerpFest                  \e[0m"
+    bash $banner_script nowait $device $android_version $los_branch
+    echo -e "${WHITEONBLUE} Syncing DerpFest                  ${NOCOLOR}"
     if [ ! -d $derpfestfolder ]; then
         mkdir $derpfestfolder
         cd $derpfestfolder
-        repo init -u https://github.com/DerpFest-AOSP/android_manifest.git -b 16 --git-lfs
+        repo init -u "$derp_repo""android_manifest.git" -b $derp_branch --git-lfs
+        git clone $local_manifest_url $local_manifest_folder
+        if [ ! -d ".repo/local_manifests" ]; then mkdir ".repo/local_manifests"; fi
+        cp $local_manifest_file .repo/local_manifests/
     else
         cd $derpfestfolder
     fi
-    konsole -e "bash -c 'repo sync --force-sync && sleep 5 && exit; exec bash'"
+    repo sync --force-sync
+    sleep 5
 fi
 
 cd $rootfolder
 
 case "$device" in
     "all")
-        banner
+        bash $banner_script nowait $device $android_version $los_branch
+        #materialfiles
         debloat
         builddevice panther
+        if [ $ERROR = true ]; then continue; fi
         if [ $root = true ]; then rootdevice panther; fi
         builddevice cheetah
+        if [ $ERROR = true ]; then continue; fi
         if [ $root = true ]; then rootdevice cheetah; fi
         builddevice lynx
+        if [ $ERROR = true ]; then continue; fi
         if [ $root = true ]; then rootdevice lynx; fi
         ;;
     "panther" | "cheetah" | "lynx" )
-        banner
+        bash $banner_script nowait $device $android_version $los_branch
+        #materialfiles
         debloat
         builddevice $device
+        if [ $ERROR = true ]; then continue; fi
         if [ $root = true ]; then rootdevice $device; fi
         ;;
     *)
         echo
-        echo -e "\e[1;31mFAIL!! What device to build?\e[0m"
+        echo -e "${RED} What device to build?${NOCOLOR}"
         echo
         helpmsg
         exit 1
         ;;
 esac
 
-if [ -f $debloatmkfilebkp ] || [ -f $debloatbpfilebkp ]; then undodebloat; fi
 
-if [ $poweroff = true ]; then systemctl poweroff; fi
+# Cleaning
+echo -e "${WHITEONBLUE} Cleaning...                       ${NOCOLOR}"
+if [ -f $debloatmkfilebkp ] || [ -f $debloatbpfilebkp ]; then
+    echo "Undoing debloat.."
+    undodebloat
+fi
+echo "Removing temp files..."
+cleaning_files=()
+for i in "${cleaning_files[@]}"; do
+    rm $i
+done
+
+bash $banner_script nowait $1 $android_version $los_branch
+
+if [ $ERROR = true ]; then
+    echo -e "${WHITEONRED} BUILD ERROR          ${NOCOLOR}"
+    echo -e "${RED} Something went wrong during build. ${NOCOLOR}"
+    echo -e "${RED} Check logs and try again. ${NOCOLOR}"
+else
+    echo -e "${WHITEONCYAN} BUILD COMPLETE          ${NOCOLOR}"
+fi
+
+
+elapsed_time=$SECONDS # Timer tick
+secs=$((elapsed_time % 60))
+mins=$(( (elapsed_time % 3600) / 60 ))
+hours=$((elapsed_time / 3600))
+if [ $secs -lt 10 ]; then secs="0$secs"; fi
+if [ $mins -lt 10 ]; then mins="0$mins"; fi
+if [ $hours -lt 10 ]; then hours="0$hours"; fi
+
+echo -e "${YELLOW}┌──────────────────┐${NOCOLOR}"
+echo -e "${YELLOW}│ ${CYAN}Time spent:      ${YELLOW}│${NOCOLOR}"
+echo -e "${YELLOW}│ ${WHITEONMAGENTA} "$hours"h "$mins"m "$secs"s ${NOCOLOR}    ${YELLOW}│${NOCOLOR}"
+echo -e "${YELLOW}└──────────────────┘${NOCOLOR}"
+
+
+if [ $poweroff = true ]; then
+    timer=10
+    timercolor=""
+    echo -e "${WHITEONMAGENTA}Switching off computer in $timer seconds        ${NOCOLOR}"
+    for (( i = $timer; i >= 0; i-- )); do
+        if [ $i != 0 ]; then
+            if [ $(($timer/$i)) = 1 ]; then timercolor=${GREEN}; fi
+            if [ $(($timer/$i)) = 2 ]; then timercolor=${YELLOW}; fi
+            if [ $(($timer/$i)) = 3 ]; then timercolor=${RED}; fi
+            echo -ne "$timercolor████${NOCOLOR}"
+        else
+            echo -ne "${RED}████${NOCOLOR}"
+        fi
+        sleep 1
+    done
+    echo
+    systemctl poweroff
+fi
