@@ -128,6 +128,9 @@ function builddevice() {
     bash $banner_script nowait $1 $android_version $los_branch
     cd $derpfestfolder
 
+    export KERNEL_MANIFEST_BRANCH=$los_branch
+    export KERNEL_MANIFEST_REMOTE=$los_repo
+
     #TMUX-SESSION-----------------------
     tmux new-session -d -s derp_session
     tmux split-window -v
@@ -138,7 +141,7 @@ function builddevice() {
     tmux select-pane -t 2
     tmux send-keys -t 0 "bash $banner_script wait $1 $android_version $los_branch; echo 'Process started at `date`'" C-m
     tmux send-keys -t 1 "clear; echo; echo -e '${WHITEONMAGENTA} Building ROM with $jobs simultaneous processes... ${NOCOLOR}'; echo; bash -c '$(declare -f wait_task); wait_task'" C-m
-    tmux send-keys -t 2 "clear; . build/envsetup.sh && export KERNEL_MANIFEST_BRANCH=$los_branch &&  export KERNEL_MANIFEST_REMOTE=$los_repo && lunch lineage_$1-$android_version-user &&  mka derp -j $jobs; touch /tmp/end_task" C-m
+    tmux send-keys -t 2 "clear; . build/envsetup.sh && lunch lineage_$1-$android_version-user &&  mka derp -j $jobs; touch /tmp/end_task" C-m
 #     tmux send-keys -t 3 "htop -p --readonly" C-m
     tmux send-keys -t 3 "bash $monitor_script" C-m
     tmux send-keys -t 1 "clear; echo; echo -e ' ${BLUE}Cooling down...${NOCOLOR}'; sleep 5; rm /tmp/end_task; tmux kill-session -t derp_session" C-m
