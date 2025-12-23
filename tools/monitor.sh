@@ -54,25 +54,25 @@ echo
 # Infinite loop
 while true; do
     # RAM usage
-    ram_usado=$(free | awk '/Mem/{print int($3/$2*100)}')  # Use int to get only the integer part
+    used_ram=$(LC_ALL=C free | awk '/Mem/{print int($3/$2*100)}')  # Use int to get only the integer part
 
     # Swap usage
-    swap_usado=$(free | awk '/Swap/{print int($3/$2*100)}')  # Use int to get only the integer part
+    used_swap=$(LC_ALL=C free | awk '/Swap/{print int($3/$2*100)}')  # Use int to get only the integer part
 
     # CPU usage
-    cpu_usado=$(top -bn1 | awk '/^%Cpu/{print int(100-$8)}')  # Use int to get only the integer part
+    used_cpu=$(LC_ALL=C top -bn1 | awk '/^%Cpu/{print int(100-$8)}')  # Use int to get only the integer part
 
     # Disk usage
-    disco_usado=$(df --output=pcent / | tail -n1 | tr -d '%' | cut -d '.' -f 1)  # Remove decimals
+    used_disk=$(df --output=pcent / | tail -n1 | tr -d '%' | cut -d '.' -f 1)  # Remove decimals
 
     # Set colors
-    ram_color=$(set_color "$ram_usado")
-    swap_color=$(set_color "$swap_usado")
-    cpu_color=$(set_color "$cpu_usado")
-    disco_color=$(set_color "$disco_usado")
+    ram_color=$(set_color "$used_ram")
+    swap_color=$(set_color "$used_swap")
+    cpu_color=$(set_color "$used_cpu")
+    disco_color=$(set_color "$used_disk")
 
     # Print all information in one line
-    echo -ne "\r ${NOCOLOR}${WHITE}RAM${ram_color}$(draw_bar "$ram_usado")${NOCOLOR}            ${WHITE}Swap${swap_color}$(draw_bar "$swap_usado")${NOCOLOR}            ${WHITE}CPU${cpu_color}$(draw_bar "$cpu_usado")${NOCOLOR}           ${WHITE}Disk${disco_color}$(draw_bar "$disco_usado")${NOCOLOR}"
+    echo -ne "\r ${NOCOLOR}${WHITE}RAM${ram_color}$(draw_bar "$used_ram")${NOCOLOR}            ${WHITE}Swap${swap_color}$(draw_bar "$used_swap")${NOCOLOR}            ${WHITE}CPU${cpu_color}$(draw_bar "$used_cpu")${NOCOLOR}           ${WHITE}Disk${disco_color}$(draw_bar "$used_disk")${NOCOLOR}"
 
     # Wait for 1 second
     sleep 1
