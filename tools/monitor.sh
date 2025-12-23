@@ -1,5 +1,7 @@
 #!/bin/bash
 
+partition="/ # Change for your own
+
 # Terminal Colors
 readonly BLUE='\033[1;34m'
 readonly GREEN='\033[1;32m'
@@ -63,7 +65,7 @@ while true; do
     used_cpu=$(LC_ALL=C top -bn1 | awk '/^%Cpu/{print int(100-$8)}')  # Use int to get only the integer part
 
     # Disk usage
-    used_disk=$(df --output=pcent / | tail -n1 | tr -d '%' | cut -d '.' -f 1)  # Remove decimals
+    used_disk=$(df --output=pcent $partition | tail -n1 | tr -d '%' | cut -d '.' -f 1)  # Remove decimals
 
     # Set colors
     ram_color=$(set_color "$used_ram")
