@@ -1,6 +1,6 @@
 #!/bin/bash
 
-partition="/" # Change for your own
+partition="/media/seandabes/data" # Change for your own
 
 # Terminal Colors
 readonly BLUE='\033[1;34m'
