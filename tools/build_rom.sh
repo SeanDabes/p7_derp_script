@@ -73,11 +73,11 @@ builddevice() {
 case "$2" in
     "rom")
         info="clear; echo; echo -e '${WHITEONMAGENTA} Building ROM with $3 simultaneous processes... ${NOCOLOR}'; echo; bash -c '$(declare -f wait_task); wait_task'"
-        command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-user &&  mka derp -j $jobs; touch /tmp/end_task"
+        command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-user &&  mka derp -j $3; touch /tmp/end_task"
     ;;
     "recovery")
         info="clear; echo; echo -e '${WHITEONMAGENTA} Building RECOVERY with $3 simultaneous processes... ${NOCOLOR}'; echo; bash -c '$(declare -f wait_task); wait_task'"
-        command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-userdebug &&  m vendorbootimage -j $jobs; touch /tmp/end_task"
+        command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-userdebug &&  m vendorbootimage -j $3; touch /tmp/end_task"
     ;;
 esac
 
