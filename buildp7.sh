@@ -13,6 +13,7 @@ poweroff=false
 root=false
 info=false
 originalbuild=false
+upload=false
 device=""
 jobs=""
 
@@ -34,7 +35,10 @@ export modsdir="$rootdir/SDmods"
 export banner_script="$toolsdir/banner.sh"
 export monitor_script="$toolsdir/monitor.sh"
 export build_script="$toolsdir/build_rom.sh"
+export upload_script="$toolsdir/upload.sh"
 export derpfestdir="$rootdir/../derpfest" # Change for own one
+export start_date="$(date +%Y%m%d)"
+export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_"$derp_branch"/"
 
 modscounter=0
 
@@ -169,12 +173,14 @@ helpmsg(){
     echo " -p, --poweroff        Determines whether the computer should be turned off when finished."
     echo " -i, --info            Show info related to modules."
     echo " -n, --nomodules       Builds the ROM without Sean Dabes' modules, DerpFest as is."
+    echo " -u, --upload          Uploads compiled files to server."
+    echo "                       Use rclone to configure a server and set it in tools/upload.sh."
     echo
     exit 1
 }
 
 # Using getopt for handling options
-OPTIONS=$(getopt -o d:j:spin -l device:,jobs:,sync,poweroff,info,nomodules -- "$@")
+OPTIONS=$(getopt -o d:j:spinu -l device:,jobs:,sync,poweroff,info,nomodules,upload -- "$@")
 eval set -- "$OPTIONS"
 
 while true; do
@@ -201,6 +207,10 @@ while true; do
             ;;
         -n|--nomodules)
             originalbuild=true
+            shift
+            ;;
+        -u|--upload)
+            upload=true
             shift
             ;;
         --)
@@ -254,6 +264,9 @@ case "$device" in
         ;;
 esac
 
+if [ $upload = true ]; then
+    bash $upload_script
+fi
 
 elapsed_time=$SECONDS # Timer tick
 secs=$((elapsed_time % 60))

@@ -3,8 +3,6 @@
 info=""
 command=""
 variant=""
-out_rom_dir="$derpfestdir/00_latest_builds/"
-
 
 wait_task(){
     local marquee_anim=(
