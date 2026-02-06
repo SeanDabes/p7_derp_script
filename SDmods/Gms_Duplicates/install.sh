@@ -35,9 +35,6 @@ applist=(
 echo -e "${BLUE}$modname${NOCOLOR}"
 
 modify(){
-    workfile="$workfile"
-    PATRON="WfcActivation"
-
     # Use perl to remove complete blocks
     perl -e '
     use strict;
