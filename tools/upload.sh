@@ -25,6 +25,11 @@ if check_server; then
     exit
 else
     echo -e "${GREEN}OK${NOCOLOR}"
-    echo "- Uploading files..."
-    rclone -P copy $out_rom_dir  $server:"$server_root"
+    if [ -d $out_rom_dir ]; then
+        echo "- Uploading files..."
+        rclone -P copy $out_rom_dir  $server:"$server_root"
+    else
+        echo -e "${RED}Folder $out_rom_dir doesn't exist${NOCOLOR}"
+        exit
+    fi
 fi
