@@ -256,11 +256,15 @@ case "$device" in
         if [ $ERROR = true ]; then continue; fi
         ;;
     *)
-        echo
-        echo -e "${RED} No device provided ${NOCOLOR}"
-        echo
-        helpmsg
-        exit 1
+        if [ $upload = true ]; then
+            bash $upload_script
+        else
+            echo
+            echo -e "${RED} No device provided ${NOCOLOR}"
+            echo
+            helpmsg
+            exit 1
+        fi
         ;;
 esac
 
