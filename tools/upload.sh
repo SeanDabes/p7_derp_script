@@ -26,5 +26,5 @@ if check_server; then
 else
     echo -e "${GREEN}OK${NOCOLOR}"
     echo "- Uploading files..."
-    rclone -P copy $derpfestdir/00_latest_builds  $server:"$server_root"
+    rclone -P copy $out_rom_dir  $server:"$server_root"
 fi
