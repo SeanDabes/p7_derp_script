@@ -8,6 +8,7 @@ modstatus=1
 modname="Gapps by SeanDabes"
 modtype=prebuild
 workdir="$derpfestdir/vendor/lineage"
+workdir2="$derpfestdir/vendor/gms"
 
 case $1 in
     "enum")
@@ -16,8 +17,10 @@ case $1 in
     ;;
     "clean")
         echo -n "- $modname..."
-        cd $workdir
-        git reset --hard &> /dev/null
+        for item in $workdir $workdir2; do
+            cd $item
+            git reset --hard &> /dev/null
+        done
         echo -e "${GREEN}OK${NOCOLOR}"
         exit
     ;;
@@ -50,4 +53,18 @@ else
     else
         echo -e "${RED}File not found${NOCOLOR}"
     fi
+fi
+
+sleep 0.1
+
+echo -n "- Avoiding duplicated definitions..."
+filename="Android.bp"
+suffix="_sd"
+for file in $(find $workdir2 -name $filename); do
+    mv "$file" "$file""$suffix"
+done
+if [ -z $(find $workdir2 -name $filename) ]; then
+    echo -e "${GREEN}OK${NOCOLOR}"
+else
+    echo -e "${YELLOW}Some items could not be changed${NOCOLOR}"
 fi
