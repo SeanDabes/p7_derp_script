@@ -6,7 +6,7 @@
 # I have chosen the ones from vendor to keep device tree as clean as possible.
 
 # Module status, 1=active 0=inactive
-modstatus=1
+modstatus=0
 modname="Remove duplicated gms apps"
 modtype=prebuild
 workdir="$derpfestdir/vendor/gms"
