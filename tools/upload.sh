@@ -27,7 +27,7 @@ else
     echo -e "${GREEN}OK${NOCOLOR}"
     if [ -d $out_rom_dir ]; then
         echo "- Uploading files..."
-        rclone -P copy $out_rom_dir  $server:"$server_root"
+        rclone -P copy $out_rom_dir  $server:"$server_root/$start_date""_""$derp_branch"
     else
         echo -e "${RED}Folder $out_rom_dir doesn't exist${NOCOLOR}"
         exit
