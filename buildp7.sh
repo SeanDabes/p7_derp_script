@@ -174,7 +174,6 @@ helpmsg(){
     echo " -p, --poweroff        Determines whether the computer should be turned off when finished."
     echo " -i, --info            Show info related to modules."
     echo " -n, --nomodules       Builds the ROM without Sean Dabes' modules, DerpFest as is."
-    echo " -r, --recovery        Builds also recovery in userdebug mode for selected device."
     echo " -u, --upload          Uploads compiled files to server."
     echo "                       Use rclone to configure a server and set it in tools/upload.sh."
     echo
@@ -182,7 +181,7 @@ helpmsg(){
 }
 
 # Using getopt for handling options
-OPTIONS=$(getopt -o d:j:spinur -l device:,jobs:,sync,poweroff,info,nomodules,upload,recovery -- "$@")
+OPTIONS=$(getopt -o d:j:spinu -l device:,jobs:,sync,poweroff,info,nomodules,upload -- "$@")
 eval set -- "$OPTIONS"
 
 while true; do
@@ -215,10 +214,6 @@ while true; do
             upload=true
             shift
             ;;
-        -r|--recovery)
-            recovery=true
-            shift
-            ;;
         --)
             shift
             break
@@ -243,15 +238,6 @@ case "$device" in
         if [ $ERROR = true ]; then continue; fi
         bash $build_script lynx rom $jobs
         if [ $ERROR = true ]; then continue; fi
-
-        if [ $recovery = true ]; then
-            bash $build_script cheetah recovery $jobs
-            if [ $ERROR = true ]; then continue; fi
-            bash $build_script panther recovery $jobs
-            if [ $ERROR = true ]; then continue; fi
-            bash $build_script lynx recovery $jobs
-            if [ $ERROR = true ]; then continue; fi
-        fi
         ;;
     "panther" | "cheetah" | "lynx" )
         bash $banner_script nowait $device $android_version $los_branch
@@ -259,11 +245,6 @@ case "$device" in
 
         bash $build_script $device rom $jobs
         if [ $ERROR = true ]; then continue; fi
-
-        if [ $recovery = true ]; then
-            bash $build_script $device recovery $jobs
-            if [ $ERROR = true ]; then continue; fi
-        fi
         ;;
     *)
         if [ $upload = true ]; then
