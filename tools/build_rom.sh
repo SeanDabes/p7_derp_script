@@ -7,6 +7,7 @@ src_dir="out/target/product/$1/"
 out_dir="$out_rom_dir$1"
 target_files_zip="lineage_$1-target_files.zip"
 work_dir="$out_dir""/work_dir"
+ota_file="DerpFest-v$derp_branch-$start_date-$1-Official-Beta.zip"
 mkdir -p $out_dir
 
 
@@ -135,12 +136,15 @@ fi
 
 # 7. Make ota package with the modified files
 info="clear; echo; echo -e '${WHITEONMAGENTA} Building OTA Package... ${NOCOLOR}'; echo; bash -c '$(declare -f wait_task); wait_task'"
-command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-userdebug && ota_from_target_files $work_dir/target_files_mod.zip $out_dir/DerpFest-v$derp_branch-$start_date-$1-Official-Beta.zip; touch /tmp/end_task"
+command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-userdebug && ota_from_target_files $work_dir/target_files_mod.zip $out_dir/$ota_file; touch /tmp/end_task"
 
 builddevice $1
 
 # 8. Clean
 rm -rf $work_dir
+
+# 9. Generate sha256sum file
+sha256sum $ota_file >> $ota_file.sha256sum
 
 sleep 5
 echo
