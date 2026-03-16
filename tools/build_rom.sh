@@ -144,7 +144,7 @@ builddevice $1
 rm -rf $work_dir
 
 # 9. Generate sha256sum file
-sha256sum $ota_file >> $ota_file.sha256sum
+sha256sum $ota_file >> "$out_dir/$ota_file.sha256sum"
 
 sleep 5
 echo
