@@ -77,7 +77,7 @@ builddevice() {
 
 # 1. Make target-files package in user variant
 info="clear; echo; echo -e '${WHITEONMAGENTA} Building ROM with $3 simultaneous processes... ${NOCOLOR}'; echo; bash -c '$(declare -f wait_task); wait_task'"
-command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-user && m target-files-package -j $3; touch /tmp/end_task"
+command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-user && mka target-files-package otatools -j $3; touch /tmp/end_task"
 
 builddevice $1
 
@@ -106,7 +106,7 @@ sleep 2
 
 # 4.  Make recovery in userdebug variant and place it at the same place
 info="clear; echo; echo -e '${WHITEONMAGENTA} Building RECOVERY with $3 simultaneous processes... ${NOCOLOR}'; echo; bash -c '$(declare -f wait_task); wait_task'"
-command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-userdebug &&  m vendorbootimage -j $3; touch /tmp/end_task"
+command="clear; . build/envsetup.sh && lunch lineage_$1-$android_version-userdebug && mka vendorbootimage -j $3; touch /tmp/end_task"
 
 builddevice $1
 
