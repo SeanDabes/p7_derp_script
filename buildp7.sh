@@ -17,6 +17,7 @@ upload=false
 recovery=false
 device=""
 jobs=""
+wait_duration=""
 
 SECONDS=0 # Timer start
 
@@ -37,6 +38,7 @@ export banner_script="$toolsdir/banner.sh"
 export monitor_script="$toolsdir/monitor.sh"
 export build_script="$toolsdir/build_rom.sh"
 export upload_script="$toolsdir/upload.sh"
+export wait_script="$toolsdir/countdown.sh"
 export derpfestdir="$rootdir/../derpfest" # Change for own one
 export start_date="$(date +%Y%m%d)"
 export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_"$derp_branch"/"
@@ -176,12 +178,14 @@ helpmsg(){
     echo " -n, --nomodules       Builds the ROM without Sean Dabes' modules, DerpFest as is."
     echo " -u, --upload          Uploads compiled files to server."
     echo "                       Use rclone to configure a server and set it in tools/upload.sh."
+    echo " -w, --wait            Waits the supplied time before compiling."
+    echo "                       Duration format: 10s, 5m, 1h30m20s, 2h, etc. (default 10s)"
     echo
     exit 1
 }
 
 # Using getopt for handling options
-OPTIONS=$(getopt -o d:j:spinu -l device:,jobs:,sync,poweroff,info,nomodules,upload -- "$@")
+OPTIONS=$(getopt -o d:j:spinuw: -l device:,jobs:,sync,poweroff,info,nomodules,upload,wait: -- "$@")
 eval set -- "$OPTIONS"
 
 while true; do
@@ -214,6 +218,10 @@ while true; do
             upload=true
             shift
             ;;
+        -w|--wait)
+            wait_duration="$2"
+            shift 2
+            ;;
         --)
             shift
             break
@@ -224,6 +232,8 @@ done
 if [ -z $jobs ]; then jobs=$(nproc --all); fi
 
 if [ $info = true ]; then summary; fi
+
+if [ ! -z $wait_duration ]; then bash $wait_script $wait_duration; fi
 
 if [ $syncderp = true ]; then sync; fi
 
