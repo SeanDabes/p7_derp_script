@@ -88,7 +88,7 @@ sleep 2
 
 # 3. Take images
 echo "- Copying images..."
-files=(boot.img dtbo.img init_boot.img vendor_kernel_boot.img)
+files=(boot.img dtbo.img init_boot.img vendor_kernel_boot.img vbmeta.img)
 for item in "${files[@]}"; do
     echo -n "$item..."
     if [ -f "$work_dir/IMAGES/$item" ]; then
