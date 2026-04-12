@@ -62,12 +62,11 @@ build_all() {
     local device="$1"
     local jobs="$2"
 
-    # --- Variables que dependen del dispositivo ---
     local src_dir="out/target/product/$device/"
     local target_files_zip="lineage_$device-target_files.zip"
     local out_dir="$out_rom_dir/$device"
     local work_dir="$out_dir/work_dir"
-    local ota_file="DerpFest-v$derp_branch-$(shell date +%Y%m%d)-$device-Official-Stable.zip"
+    local ota_file="DerpFest-v$derp_branch-$start_date-$1-Official-Stable.zip"
 
     mkdir -p "$out_dir"
 
