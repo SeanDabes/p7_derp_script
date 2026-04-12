@@ -6,7 +6,7 @@
 
 # -----Server config, change and configure to your flavour
 server="onedrive"
-server_root="DerpFest"
+server_root="DerpFest_priv"
 
 check_server(){
     if [ ! -z $(rclone lsf --dirs-only $server:$server_root | grep $start_date) ]; then
