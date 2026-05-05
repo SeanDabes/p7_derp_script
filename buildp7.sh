@@ -40,8 +40,6 @@ export build_script="$toolsdir/build_rom.sh"
 export upload_script="$toolsdir/upload.sh"
 export wait_script="$toolsdir/countdown.sh"
 export derpfestdir="$rootdir/../derpfest" # Change for own one
-export start_date="$(date +%Y%m%d)"
-export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_"$derp_branch"/"
 
 modscounter=0
 
@@ -234,6 +232,9 @@ if [ -z $jobs ]; then jobs=$(nproc --all); fi
 if [ $info = true ]; then summary; fi
 
 if [ ! -z $wait_duration ]; then bash $wait_script $wait_duration; fi
+
+export start_date="$(date +%Y%m%d)"
+export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_"$derp_branch"/"
 
 if [ $syncderp = true ]; then sync; fi
 
