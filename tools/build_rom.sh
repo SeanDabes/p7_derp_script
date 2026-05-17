@@ -119,7 +119,7 @@ build_all() {
     lunch "lineage_$device-$android_version-userdebug"
     mka vendorbootimage -j "$jobs"
 
-    # 5. Replace vendor_boot.img in the working directory
+    # 5.1. Replace vendor_boot.img in the working directory
     echo -n "- Replacing vendor_boot with userdebug version..."
     echo -e "${WHITEONMAGENTA}Replacing vendor_boot...${NOCOLOR}" > /tmp/build_phase
     local vendor_boot_src="$src_dir/vendor_boot.img"
@@ -129,6 +129,17 @@ build_all() {
     fi
     cp "$vendor_boot_src" "$work_dir/IMAGES/vendor_boot.img"
     if [ -f "$work_dir/IMAGES/vendor_boot.img" ]; then
+        echo -e "${GREEN}OK${NOCOLOR}"
+    else
+        echo -e "${RED}ERROR${NOCOLOR}"
+        exit 1
+    fi
+
+    # 5.2. Also place the recovery in final directory
+    echo -n "- Copying vendor_boot with userdebug version to out directory..."
+    local vendor_boot_out="$out_dir/vendor_boot.img"
+    cp "$vendor_boot_src" "$vendor_boot_out"
+    if [ -f "$vendor_boot_out" ]; then
         echo -e "${GREEN}OK${NOCOLOR}"
     else
         echo -e "${RED}ERROR${NOCOLOR}"
