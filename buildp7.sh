@@ -39,6 +39,7 @@ export monitor_script="$toolsdir/monitor.sh"
 export build_script="$toolsdir/build_rom.sh"
 export upload_script="$toolsdir/upload.sh"
 export wait_script="$toolsdir/countdown.sh"
+export changelog_script="$toolsdir/changelog.sh"
 export derpfestdir="$rootdir/../derpfest" # Change for own one
 
 modscounter=0
@@ -236,6 +237,16 @@ if [ ! -z $wait_duration ]; then bash $wait_script $wait_duration; fi
 export start_date="$(date +%Y%m%d)"
 export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_"$derp_branch"/"
 
+changelog(){
+    # Take last public ROM
+    local public_server="onedrive"
+    local public_dir="DerpFest"
+    export last_build=$(rclone lsf --dirs-only $public_server:$public_dir | sort -r | head -n 1 | cut -d "_" -f 1)
+
+    # Generate changelog from last build
+    bash "$changelog_script" "$last_build" "$derpfestdir" "$out_rom_dir/changelog_$start_date""_"$derp_branch".txt"
+}
+
 if [ $syncderp = true ]; then sync; fi
 
 case "$device" in
@@ -249,6 +260,9 @@ case "$device" in
         if [ $ERROR = true ]; then continue; fi
         bash $build_script lynx rom $jobs
         if [ $ERROR = true ]; then continue; fi
+
+        changelog
+
         ;;
     "panther" | "cheetah" | "lynx" )
         bash $banner_script nowait $device $android_version $los_branch
@@ -256,6 +270,9 @@ case "$device" in
 
         bash $build_script $device rom $jobs
         if [ $ERROR = true ]; then continue; fi
+
+        changelog
+
         ;;
     *)
         if [ $upload = true ]; then
