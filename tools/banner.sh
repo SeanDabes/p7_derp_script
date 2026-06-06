@@ -17,11 +17,18 @@ readonly WHITEONMAGENTA='\033[1;37;45m'
 readonly WHITEONYELLOW='\033[1;37;43m'
 readonly WHITEONCYAN='\033[1;37;46m'
 
+info_device=""
+if [ -z $2 ]; then
+    info_device=$device
+else
+    info_device=$2
+fi
+
 clear
-echo -e "${WHITEONBLUE}                                      ${NOCOLOR} ${GRAY}`date`${NOCOLOR}"
-echo -e "${WHITEONBLUE}    █▀▄ █▀▀ █▀▄ █▀█ █▀▀ █▀▀ █▀▀ ▀█▀   ${NOCOLOR} ${BLUE}Device: $2${NOCOLOR}"
-echo -e "${WHITEONYELLOW}    █ █ █▀▀ █▀▄ █▀▀ █▀▀ █▀▀ ▀▀█  █    ${NOCOLOR} ${YELLOW}Version: $3${NOCOLOR}"
-echo -e "${WHITEONCYAN}    ▀▀  ▀▀▀ ▀ ▀ ▀   ▀   ▀▀▀ ▀▀▀  ▀    ${NOCOLOR} ${CYAN}LineageOS branch: $4${NOCOLOR}"
+echo -e "${WHITEONBLUE}                                      ${NOCOLOR} ${GRAY}Timestamp: $start_date${NOCOLOR}"
+echo -e "${WHITEONBLUE}    █▀▄ █▀▀ █▀▄ █▀█ █▀▀ █▀▀ █▀▀ ▀█▀   ${NOCOLOR} ${BLUE}Device: $info_device${NOCOLOR}"
+echo -e "${WHITEONYELLOW}    █ █ █▀▀ █▀▄ █▀▀ █▀▀ █▀▀ ▀▀█  █    ${NOCOLOR} ${YELLOW}Version: $android_version${NOCOLOR}"
+echo -e "${WHITEONCYAN}    ▀▀  ▀▀▀ ▀ ▀ ▀   ▀   ▀▀▀ ▀▀▀  ▀    ${NOCOLOR} ${CYAN}LineageOS branch: $los_branch${NOCOLOR}"
 echo -e "${WHITEONCYAN}         >>Building script<<          ${NOCOLOR}"
 case $1 in
     "wait")

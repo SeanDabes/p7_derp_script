@@ -43,7 +43,7 @@ if [ $# -ne 3 ]; then
     exit 1
 fi
 
-bash $banner_script nowait $device $android_version $los_branch
+bash $banner_script nowait
 echo -e "${WHITEONMAGENTA} Changelog generation... ${NOCOLOR}"
 echo
 echo -e "- Last public build: ${GREEN}$last_build${NOCOLOR}"

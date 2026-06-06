@@ -215,7 +215,7 @@ tmux resize-pane -t 3 -D 30
 tmux select-pane -t 2
 
 # Pane 0: banner info (external script)
-tmux send-keys -t 0 "bash $banner_script wait $1 $android_version $los_branch; echo 'Process started at `date`'" C-m
+tmux send-keys -t 0 "bash $banner_script wait $1; echo 'Process started at `date`'" C-m
 
 # Pane 1: status animation (runs the spinner that reads /tmp/build_phase)
 tmux send-keys -t 1 "clear; echo; echo -e ' ${BLUE}Build status:${NOCOLOR}'; bash -c '$(declare -f spinner_animation); spinner_animation'" C-m

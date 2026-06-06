@@ -16,7 +16,7 @@ check_server(){
     fi
 }
 
-bash $banner_script nowait $device $android_version $los_branch
+bash $banner_script nowait
 echo -e "${BLUE}Files upload${NOCOLOR}"
 
 echo -n "- Checking server..."

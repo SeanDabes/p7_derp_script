@@ -100,7 +100,7 @@ export num_active_prebuild_mods=${#active_prebuild_mods[@]}
 export num_active_postbuild_mods=${#active_postbuild_mods[@]}
 
 summary(){
-    bash $banner_script nowait "" $android_version $los_branch
+    bash $banner_script nowait
     echo -e "${WHITEONBLUE}Total mods: $numtotalmods ${NOCOLOR}"
     echo
 
@@ -126,7 +126,7 @@ apply_mods(){
     local counter=1
     local -n array_ref="active_$2_mods" # -n argument links to the actual variable
     for j in "${!array_ref[@]}";do
-        bash $banner_script nowait $device $android_version $los_branch
+        bash $banner_script nowait
         echo -e "${WHITEONMAGENTA} Applying $2 mods... ${NOCOLOR}"
         echo
         echo -ne "${YELLOW} $counter/$((num_active_$2_mods)) "
@@ -139,7 +139,7 @@ apply_mods(){
 }
 
 sync(){
-    bash $banner_script nowait $device $android_version $los_branch
+    bash $banner_script nowait
     echo -e "${WHITEONMAGENTA} Syncing DerpFest                  ${NOCOLOR}"
     if [ ! -d $derpfestdir ]; then
         echo "Preparing building instance..."
@@ -251,7 +251,7 @@ if [ $syncderp = true ]; then sync; fi
 
 case "$device" in
     "all")
-        bash $banner_script nowait $device $android_version $los_branch
+        bash $banner_script nowait
         if [ $originalbuild = false ]; then apply_mods $device prebuild; fi
 
         bash $build_script cheetah rom $jobs
@@ -265,7 +265,7 @@ case "$device" in
 
         ;;
     "panther" | "cheetah" | "lynx" )
-        bash $banner_script nowait $device $android_version $los_branch
+        bash $banner_script nowait
         if [ $originalbuild = false ]; then apply_mods $device prebuild; fi
 
         bash $build_script $device rom $jobs
