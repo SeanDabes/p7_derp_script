@@ -42,6 +42,12 @@ export wait_script="$toolsdir/countdown.sh"
 export changelog_script="$toolsdir/changelog.sh"
 export derpfestdir="$rootdir/../derpfest" # Change for own one
 
+# Take last public ROM
+public_server="onedrive"
+public_dir="DerpFest"
+export last_build=$(rclone lsf --dirs-only $public_server:$public_dir | sort -r | head -n 1 | cut -d "_" -f 1)
+
+
 modscounter=0
 
 # Terminal Colors
@@ -238,11 +244,6 @@ export start_date="$(date +%Y%m%d)"
 export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_"$derp_branch"/"
 
 changelog(){
-    # Take last public ROM
-    local public_server="onedrive"
-    local public_dir="DerpFest"
-    export last_build=$(rclone lsf --dirs-only $public_server:$public_dir | sort -r | head -n 1 | cut -d "_" -f 1)
-
     # Generate changelog from last build
     bash "$changelog_script" "$last_build" "$derpfestdir" "$out_rom_dir/changelog_$start_date""_"$derp_branch".txt"
 }
