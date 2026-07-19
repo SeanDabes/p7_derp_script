@@ -1,62 +1,8 @@
 #!/bin/bash
 set -e
-set -u
 
 # ----------------------------------------------------------------------
-# Pane 1: status animation (runs in tmux, reads /tmp/build_phase)
-# ----------------------------------------------------------------------
-spinner_animation() {
-    local spinner=(
-        '▕                    ▏'
-        '▕▒                   ▏'
-        '▕▒▒                  ▏'
-        '▕▒▒▒                 ▏'
-        '▕ ▒▒▒                ▏'
-        '▕  ▒▒▒               ▏'
-        '▕   ▒▒▒              ▏'
-        '▕    ▒▒▒             ▏'
-        '▕     ▒▒▒            ▏'
-        '▕      ▒▒▒           ▏'
-        '▕       ▒▒▒          ▏'
-        '▕        ▒▒▒         ▏'
-        '▕         ▒▒▒        ▏'
-        '▕          ▒▒▒       ▏'
-        '▕           ▒▒▒      ▏'
-        '▕            ▒▒▒     ▏'
-        '▕             ▒▒▒    ▏'
-        '▕              ▒▒▒   ▏'
-        '▕               ▒▒▒  ▏'
-        '▕                ▒▒▒ ▏'
-        '▕                 ▒▒▒▏'
-        '▕                  ▒▒▏'
-        '▕                   ▒▏'
-    )
-    local phase=""
-
-    while [ ! -f /tmp/end_task ]; do
-        if [ -f /tmp/build_phase ]; then
-            phase=$(cat /tmp/build_phase)
-        else
-            phase="Waiting for build to start..."
-        fi
-
-        for i in "${spinner[@]}"; do
-            printf "\033[2;2H"   # Move to row 2, col 2
-            printf "%s\n" "$phase"
-            printf "\033[4;2H"   # Move to row 4, col 2
-            printf "%s" "$i"
-            sleep 0.1
-            [ -f /tmp/end_task ] && break
-        done
-    done
-    echo -e "\n\n${BLUE}Build completed. Cooling down...${NOCOLOR}"
-    sleep 5
-    rm -f /tmp/build_phase /tmp/end_task
-    tmux kill-session -t derp_session
-}
-
-# ----------------------------------------------------------------------
-# Main build function (runs in pane 2)
+# Main build function
 # ----------------------------------------------------------------------
 build_all() {
     local device="$1"
@@ -65,19 +11,106 @@ build_all() {
     local src_dir="out/target/product/$device/"
     local target_files_zip="lineage_$device-target_files.zip"
     local out_dir="$out_rom_dir/$device"
+    local recovery_dir="out_vendor_boot/$device"
     local work_dir="$out_dir/work_dir"
     local ota_file="DerpFest-v$derp_branch-$start_date-$1-Official-Stable.zip"
-
+    if [[ $device == "panther" ]] | [[ $device == "cheetah" ]]; then
+        local kernel_dir="device/google/pantah-kernels/6.1/"
+    fi
+    if [[ $device == "lynx" ]]; then
+        local kernel_dir="device/google/$device-kernels/6.1/"
+    fi
     mkdir -p "$out_dir"
 
     cd "$derpfestdir" || { echo "Error: cannot enter $derpfestdir"; exit 1; }
+    mkdir -p "$recovery_dir"
+
+    source build/envsetup.sh
+
+    # 0. Build vendor_boot with WildKernel and userdebug recovery
+    if [[ $build_recovery == "true" ]]; then
+        echo -e "${WHITEONMAGENTA} Building recovery...${NOCOLOR}"
+        lunch "lineage_$device-$android_version-userdebug"
+        # bash "$modsdir/98_WildKernel/install.sh" "postlunch_hook" "$device" # Hook to install WildKernel
+        echo -e "\n${WHITEONMAGENTA} Building vendor_boot with $jobs jobs...${NOCOLOR}"
+        mka vendorbootimage -j "$jobs"
+
+        echo -n "- Copying vendor_boot.img..."
+        cp "$src_dir/vendor_boot.img" "$recovery_dir"
+        if [ -f "$recovery_dir/vendor_boot.img" ]; then
+            echo -e "${GREEN}OK${NOCOLOR}"
+        else
+            echo -e "${RED}KO${NOCOLOR}"
+            exit 1
+        fi
+    fi
 
     # 1. Build target-files-package (user)
     echo -e "\n${WHITEONMAGENTA} Building target-files-package (user) with $jobs jobs...${NOCOLOR}"
-    echo -e "${WHITEONMAGENTA}Building ROM (user variant) with $jobs jobs...${NOCOLOR}              " > /tmp/build_phase
+    export SKIP_KERNEL_BUILD=true
+    export SKIP_KERNEL_SYNC=true
     source build/envsetup.sh
     lunch "lineage_$device-$android_version-user"
-    mka target-files-package otatools -j "$jobs"
+    # Copy WildKernel image to proper directory
+    echo -n "- Copying WildKernel Image.lz4..."
+    cp "device/google/gs201/wildkernel/Image.lz4" $kernel_dir
+    if [ -f "$kernel_dir/Image.lz4" ]; then
+        echo -e "${GREEN}OK${NOCOLOR}"
+    else
+        echo -e "${RED}KO${NOCOLOR}"
+    fi
+    echo -n "- Removing previous artifacts..." # Just in case
+    rm -rf "out/target/product/$device/obj/BOOTIMAGE*"
+    rm -f "out/target/product/$device/vendor_boot.img"
+    echo -e "${GREEN}OK${NOCOLOR}"
+
+    # Monitor to keep an eye on vendor_boot (next mka deletes it as it changes from userdebur to user)
+    echo -e "\n${WHITEONMAGENTA} Starting vendor_boot monitor...${NOCOLOR}"
+    local backup_file="$recovery_dir/vendor_boot.img"
+    local target_dir="out/target/product/$device"
+    local target_file="$target_dir/vendor_boot.img"
+
+    if [ ! -f "$backup_file" ]; then
+        echo -e "${RED}ERROR: vendor_boot.img backup not found in $recovery_dir${NOCOLOR}"
+        exit 1
+    fi
+
+    mkdir -p "$target_dir"
+
+    # Function to restore file
+    restore_vendor_boot() {
+        if [ ! -f "$target_file" ]; then
+            mkdir -p "$target_dir"
+            cp "$backup_file" "$target_file"
+            echo -e "${GREEN}Restored vendor_boot.img${NOCOLOR}"
+        fi
+    }
+
+    (
+        if command -v inotifywait >/dev/null 2>&1; then
+            echo "Using inotifywait for monitoring."
+            inotifywait -m -e delete -e moved_from --format '%f' "$target_dir" 2>/dev/null | while read -r filename; do
+                if [[ "$filename" == "vendor_boot.img" ]]; then
+                    restore_vendor_boot
+                fi
+            done
+        else
+            echo "inotifywait not found, using polling loop (every 3 seconds)."
+            while true; do
+                restore_vendor_boot
+                sleep 3
+            done
+        fi
+    ) &
+    MONITOR_PID=$!
+    echo -e "${GREEN}Monitor started with PID $MONITOR_PID${NOCOLOR}"
+
+    # Ejecutar mka
+    mka target-files-package otatools -j "$jobs" || { echo -e "${RED}mka failed${NOCOLOR}"; exit 1; }
+    echo -e "${GREEN}mka succeeded, continuing...${NOCOLOR}"
+
+    # Kill monitor (forcefully)
+    kill $MONITOR_PID 2>/dev/null
 
     # 2. Extract target-files into a temporary directory
     echo -e "\n- Uncompressing target_files..."
@@ -87,11 +120,13 @@ build_all() {
         echo -e "${RED}ERROR: $target_files_path not found. Aborting.${NOCOLOR}"
         exit 1
     fi
+    rm -rf "$work_dir"
+    mkdir -p "$work_dir"
     unzip -q "$target_files_path" -d "$work_dir"
 
     # 3. Copy images
     echo -e "\n- Copying images..."
-    local images=(boot.img dtbo.img init_boot.img vendor_kernel_boot.img vbmeta.img)
+    local images=(boot.img dtbo.img init_boot.img vendor_kernel_boot.img vendor_boot.img vbmeta.img)
     local error_occurred=false
     for img in "${images[@]}"; do
         echo -n "$img..."
@@ -113,42 +148,11 @@ build_all() {
         exit 1
     fi
 
-    # 4. Build vendorbootimage (userdebug)
-    echo -e "\n${WHITEONMAGENTA} Building vendorbootimage (userdebug) with $jobs jobs...${NOCOLOR}"
-    echo -e "${WHITEONMAGENTA}Building recovery (userdebug variant) with $jobs jobs...${NOCOLOR}   " > /tmp/build_phase
-    lunch "lineage_$device-$android_version-userdebug"
-    mka vendorbootimage -j "$jobs"
+    # 4. Patch kernel info in package
+    echo "6.1.0" > "$work_dir/META/kernel_version.txt" || { echo -e "${RED}Error: could nopt apply patch${NOCOLOR}"; exit 1; }
 
-    # 5.1. Replace vendor_boot.img in the working directory
-    echo -n "- Replacing vendor_boot with userdebug version..."
-    echo -e "${WHITEONMAGENTA}Replacing vendor_boot...${NOCOLOR}" > /tmp/build_phase
-    local vendor_boot_src="$src_dir/vendor_boot.img"
-    if [ ! -f "$vendor_boot_src" ]; then
-        echo -e "${RED}ERROR: $vendor_boot_src not found. Aborting.${NOCOLOR}"
-        exit 1
-    fi
-    cp "$vendor_boot_src" "$work_dir/IMAGES/vendor_boot.img"
-    if [ -f "$work_dir/IMAGES/vendor_boot.img" ]; then
-        echo -e "${GREEN}OK${NOCOLOR}"
-    else
-        echo -e "${RED}ERROR${NOCOLOR}"
-        exit 1
-    fi
-
-    # 5.2. Also place the recovery in final directory
-    echo -n "- Copying vendor_boot with userdebug version to out directory..."
-    local vendor_boot_out="$out_dir/vendor_boot.img"
-    cp "$vendor_boot_src" "$vendor_boot_out"
-    if [ -f "$vendor_boot_out" ]; then
-        echo -e "${GREEN}OK${NOCOLOR}"
-    else
-        echo -e "${RED}ERROR${NOCOLOR}"
-        exit 1
-    fi
-
-    # 6. Repack target-files
-    echo -n "- Compressing files..."
-    echo -e "${WHITEONMAGENTA}Repacking target files...${NOCOLOR}                                  " > /tmp/build_phase
+    # 5. Repack target-files
+    echo -e "${WHITEONMAGENTA}Repacking target files...${NOCOLOR}"
     cd "$work_dir"
     if ! zip -q -r -y -X -0 "target_files_mod.zip" .; then
         echo -e "${RED}ERROR: zip failed.${NOCOLOR}"
@@ -160,71 +164,45 @@ build_all() {
     fi
     echo -e "${GREEN}OK${NOCOLOR}"
 
-    # 7. Build OTA package (return to ROM root)
+    # 6. Build OTA package (return to ROM root)
     echo -e "\n${WHITEONMAGENTA} Building OTA package...${NOCOLOR}"
-    echo -e "${WHITEONMAGENTA}Generating OTA package...${NOCOLOR}                                  " > /tmp/build_phase
-
     cd "$derpfestdir"   # Important: go back to the source root
-
+    export TMPDIR="$derpfestdir/tmp-ota"
+    # export TMP="$derpfestdir/tmp-ota"
+    # export TEMP="$derpfestdir/tmp-ota"
+    mkdir -p "$TMPDIR"
+    # chmod 777 $TMPDIR
     if ! command -v ota_from_target_files >/dev/null 2>&1; then
         echo -e "${RED}ERROR: ota_from_target_files not found.${NOCOLOR}"
         exit 1
     fi
-
     if ! ota_from_target_files "$work_dir/target_files_mod.zip" "$out_dir/$ota_file"; then
         echo -e "${RED}ERROR: ota_from_target_files failed.${NOCOLOR}"
         exit 1
     fi
-
     if [ ! -f "$out_dir/$ota_file" ]; then
         echo -e "${RED}ERROR: OTA file not generated at $out_dir/$ota_file.${NOCOLOR}"
         exit 1
     fi
 
-    # 8. Cleanup
-    rm -rf "$work_dir"
+    # 7. Cleanup
+    rm -rf "$work_dir" "$TMPDIR"
 
-    # 9. SHA256 checksum
-    cd $out_dir
+    # 8. SHA256 checksum
+    cd "$out_dir"
     sha256sum "$ota_file" >> "$ota_file.sha256sum"
-    cd $derpfestdir
+    cd "$derpfestdir"
 
-    # Signal completion
-    touch /tmp/end_task
     echo -e "\n${GREEN}Process completed successfully!${NOCOLOR}"
 }
 
 # ----------------------------------------------------------------------
-# Tmux configuration: a single session for the whole process
+# Execute build_all directly (no tmux)
 # ----------------------------------------------------------------------
-# Clean up any old temporary files
-rm -f /tmp/build_phase /tmp/end_task
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <device> <jobs>"
+    exit 1
+fi
 
-# Export the functions so they are available to subshells
-export -f build_all
-export -f spinner_animation
-
-tmux new-session -d -s derp_session
-
-# Split panes
-tmux split-window -v
-tmux split-window -h -t 0
-tmux resize-pane -t 2 -U 40
-tmux split-window -v -t 2
-tmux resize-pane -t 3 -D 30
-tmux select-pane -t 2
-
-# Pane 0: banner info (external script)
-tmux send-keys -t 0 "bash $banner_script wait $1; echo 'Process started at `date`'" C-m
-
-# Pane 1: status animation (runs the spinner that reads /tmp/build_phase)
-tmux send-keys -t 1 "clear; echo; echo -e ' ${BLUE}Build status:${NOCOLOR}'; bash -c '$(declare -f spinner_animation); spinner_animation'" C-m
-
-# Pane 2: main build process (using exported function)
-tmux send-keys -t 2 "clear; echo; echo -e '${WHITEONMAGENTA} Starting build...${NOCOLOR}'; bash -c 'build_all \"$1\" \"$3\"'" C-m
-
-# Pane 3: monitor (external script)
-tmux send-keys -t 3 "bash $monitor_script" C-m
-
-# Attach to the tmux session
-tmux attach-session -t derp_session
+build_all "$1" "$3"
+sleep 5

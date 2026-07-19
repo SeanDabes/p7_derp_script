@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Modular script to build the DerpFest ROM for the Pixel 7 family. By Sean Dabes.
 # Mods are in a specific directory where can be added, removed, modified or (de)activated one by one without affecting the rest.
@@ -41,6 +42,7 @@ export upload_script="$toolsdir/upload.sh"
 export wait_script="$toolsdir/countdown.sh"
 export changelog_script="$toolsdir/changelog.sh"
 export derpfestdir="$rootdir/../derpfest" # Change for own one
+export build_recovery=""
 
 # Take last public ROM
 public_server="onedrive"
@@ -106,7 +108,7 @@ export num_active_prebuild_mods=${#active_prebuild_mods[@]}
 export num_active_postbuild_mods=${#active_postbuild_mods[@]}
 
 summary(){
-    bash $banner_script nowait
+    # bash $banner_script nowait
     echo -e "${WHITEONBLUE}Total mods: $numtotalmods ${NOCOLOR}"
     echo
 
@@ -131,12 +133,13 @@ summary(){
 apply_mods(){
     local counter=1
     local -n array_ref="active_$2_mods" # -n argument links to the actual variable
+    echo -e "${WHITEONMAGENTA} Applying $2 mods... ${NOCOLOR}"
+    echo
     for j in "${!array_ref[@]}";do
-        bash $banner_script nowait
-        echo -e "${WHITEONMAGENTA} Applying $2 mods... ${NOCOLOR}"
-        echo
+        # bash $banner_script nowait
         echo -ne "${YELLOW} $counter/$((num_active_$2_mods)) "
         bash "${array_ref[j]}" $1
+        echo
         sleep 3
         counter=$((counter + 1))
     done
@@ -145,7 +148,7 @@ apply_mods(){
 }
 
 sync(){
-    bash $banner_script nowait
+    # bash $banner_script nowait
     echo -e "${WHITEONMAGENTA} Syncing DerpFest                  ${NOCOLOR}"
     if [ ! -d $derpfestdir ]; then
         echo "Preparing building instance..."
@@ -190,7 +193,7 @@ helpmsg(){
 }
 
 # Using getopt for handling options
-OPTIONS=$(getopt -o d:j:spinuw: -l device:,jobs:,sync,poweroff,info,nomodules,upload,wait: -- "$@")
+OPTIONS=$(getopt -o d:j:spinuw:r -l device:,jobs:,sync,poweroff,info,nomodules,upload,wait,recovery: -- "$@")
 eval set -- "$OPTIONS"
 
 while true; do
@@ -227,6 +230,10 @@ while true; do
             wait_duration="$2"
             shift 2
             ;;
+        -r|--recovery)
+            build_recovery=true
+            shift
+            ;;
         --)
             shift
             break
@@ -252,7 +259,7 @@ if [ $syncderp = true ]; then sync; fi
 
 case "$device" in
     "all")
-        bash $banner_script nowait
+        # bash $banner_script nowait
         if [ $originalbuild = false ]; then apply_mods $device prebuild; fi
 
         bash $build_script cheetah rom $jobs
@@ -266,13 +273,13 @@ case "$device" in
 
         ;;
     "panther" | "cheetah" | "lynx" )
-        bash $banner_script nowait
+        # bash $banner_script nowait
         if [ $originalbuild = false ]; then apply_mods $device prebuild; fi
 
         bash $build_script $device rom $jobs
         if [ $ERROR = true ]; then continue; fi
 
-        changelog
+        # changelog
 
         ;;
     *)
