@@ -11,7 +11,7 @@ build_all() {
     local src_dir="out/target/product/$device/"
     local target_files_zip="lineage_$device-target_files.zip"
     local out_dir="$out_rom_dir/$device"
-    local recovery_dir="out_vendor_boot/$device"
+    # local recovery_dir="out_vendor_boot/$device"
     local work_dir="$out_dir/work_dir"
     local ota_file="DerpFest-v$derp_branch-$start_date-$1-Official-Stable.zip"
     if [[ $device == "panther" ]] | [[ $device == "cheetah" ]]; then
@@ -23,7 +23,7 @@ build_all() {
     mkdir -p "$out_dir"
 
     cd "$derpfestdir" || { echo "Error: cannot enter $derpfestdir"; exit 1; }
-    mkdir -p "$recovery_dir"
+    # mkdir -p "$recovery_dir"
 
     source build/envsetup.sh
 
@@ -36,8 +36,8 @@ build_all() {
         mka vendorbootimage -j "$jobs"
 
         echo -n "- Copying vendor_boot.img..."
-        cp "$src_dir/vendor_boot.img" "$recovery_dir"
-        if [ -f "$recovery_dir/vendor_boot.img" ]; then
+        cp "$src_dir/vendor_boot.img" "$out_dir"
+        if [ -f "$out_dir/vendor_boot.img" ]; then
             echo -e "${GREEN}OK${NOCOLOR}"
         else
             echo -e "${RED}KO${NOCOLOR}"
@@ -58,6 +58,7 @@ build_all() {
         echo -e "${GREEN}OK${NOCOLOR}"
     else
         echo -e "${RED}KO${NOCOLOR}"
+        exit 1
     fi
     echo -n "- Removing previous artifacts..." # Just in case
     rm -rf "out/target/product/$device/obj/BOOTIMAGE*"
@@ -66,12 +67,12 @@ build_all() {
 
     # Monitor to keep an eye on vendor_boot (next mka deletes it as it changes from userdebur to user)
     echo -e "\n${WHITEONMAGENTA} Starting vendor_boot monitor...${NOCOLOR}"
-    local backup_file="$recovery_dir/vendor_boot.img"
+    local backup_file="$out_dir/vendor_boot.img"
     local target_dir="out/target/product/$device"
     local target_file="$target_dir/vendor_boot.img"
 
     if [ ! -f "$backup_file" ]; then
-        echo -e "${RED}ERROR: vendor_boot.img backup not found in $recovery_dir${NOCOLOR}"
+        echo -e "${RED}ERROR: vendor_boot.img backup not found in $out_dir${NOCOLOR}"
         exit 1
     fi
 
@@ -87,20 +88,10 @@ build_all() {
     }
 
     (
-        if command -v inotifywait >/dev/null 2>&1; then
-            echo "Using inotifywait for monitoring."
-            inotifywait -m -e delete -e moved_from --format '%f' "$target_dir" 2>/dev/null | while read -r filename; do
-                if [[ "$filename" == "vendor_boot.img" ]]; then
-                    restore_vendor_boot
-                fi
-            done
-        else
-            echo "inotifywait not found, using polling loop (every 3 seconds)."
-            while true; do
-                restore_vendor_boot
-                sleep 3
-            done
-        fi
+        while true; do
+            restore_vendor_boot
+            sleep 1
+        done
     ) &
     MONITOR_PID=$!
     echo -e "${GREEN}Monitor started with PID $MONITOR_PID${NOCOLOR}"
@@ -126,7 +117,7 @@ build_all() {
 
     # 3. Copy images
     echo -e "\n- Copying images..."
-    local images=(boot.img dtbo.img init_boot.img vendor_kernel_boot.img vendor_boot.img vbmeta.img)
+    local images=(boot.img dtbo.img init_boot.img vendor_kernel_boot.img vbmeta.img)
     local error_occurred=false
     for img in "${images[@]}"; do
         echo -n "$img..."
