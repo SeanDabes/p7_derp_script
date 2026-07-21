@@ -14,7 +14,7 @@ build_all() {
     # local recovery_dir="out_vendor_boot/$device"
     local work_dir="$out_dir/work_dir"
     local ota_file="DerpFest-v$derp_branch-$start_date-$1-Official-Stable.zip"
-    if [[ $device == "panther" ]] | [[ $device == "cheetah" ]]; then
+    if [[ $device == "panther" ]] || [[ $device == "cheetah" ]]; then
         local kernel_dir="device/google/pantah-kernels/6.1/"
     fi
     if [[ $device == "lynx" ]]; then
@@ -53,7 +53,7 @@ build_all() {
     lunch "lineage_$device-$android_version-user"
     # Copy WildKernel image to proper directory
     echo -n "- Copying WildKernel Image.lz4..."
-    cp "device/google/gs201/wildkernel/Image.lz4" $kernel_dir
+    cp "device/google/gs201/wildkernel/Image.lz4" "$kernel_dir"
     if [ -f "$kernel_dir/Image.lz4" ]; then
         echo -e "${GREEN}OK${NOCOLOR}"
     else
