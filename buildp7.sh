@@ -45,8 +45,8 @@ export derpfestdir="$rootdir/../derpfest" # Change for own one
 export build_recovery=""
 
 # Take last public ROM
-public_server="onedrive"
-public_dir="DerpFest"
+export public_server="onedrive"
+export public_dir="DerpFest"
 export last_build=$(rclone lsf --dirs-only $public_server:$public_dir | sort -r | head -n 1 | cut -d "_" -f 1)
 
 
