@@ -47,6 +47,12 @@ build_all() {
 
     # 1. Build target-files-package (user)
     echo -e "\n${WHITEONMAGENTA} Building target-files-package (user) with $jobs jobs...${NOCOLOR}"
+    if [ -f "$kernel_dir/Image.lz4" ]; then   # Ensure the Image.lz4 is at the correct location
+        echo "${GREEN}Kernel image found, going ahead${NOCOLOR}"
+    else
+        echo "${RED}Kernel image NOT found, stopping. Verify the correct download in previous mod.${NOCOLOR}"
+        exit 1
+    fi
     export SKIP_KERNEL_BUILD=true
     export SKIP_KERNEL_SYNC=true
     source build/envsetup.sh
