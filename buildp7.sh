@@ -3,9 +3,6 @@ set -e
 
 # Modular script to build the DerpFest ROM for the Pixel 7 family. By Sean Dabes.
 # Mods are in a specific directory where can be added, removed, modified or (de)activated one by one without affecting the rest.
-# Also, a beautiful look has been applied thanks to terminal colors and tmux. Why? Because terminal can be nice and because I was bored :)
-# To build from ground, tmux has to be installed and enough space has to be ensured (about 600GB).
-# The command to build the whole family from ground is ./buildp7.sh -s -d all
 
 ERROR=false
 syncderp=false
@@ -23,10 +20,10 @@ wait_duration=""
 SECONDS=0 # Timer start
 
 
-export android_version="bp4a"
-export derp_repo="https://github.com/DerpFest-LOS/"
-export derp_branch="16.2"
-export los_branch="lineage-23.2"
+export android_version="cp2a"
+export derp_repo="https://github.com/DerpFest-AOSP/"
+export derp_branch="17"
+export los_branch="lineage-24"
 export los_repo="https://github.com/LineageOS/"
 export local_manifest_url="git@github.com:SeanDabes/derp_local_manifest_p7.git"
 
@@ -41,7 +38,7 @@ export build_script="$toolsdir/build_rom.sh"
 export upload_script="$toolsdir/upload.sh"
 export wait_script="$toolsdir/countdown.sh"
 export changelog_script="$toolsdir/changelog.sh"
-export derpfestdir="$rootdir/../derpfest" # Change for own one
+export derpfestdir="$rootdir/../derpfest_$derp_branch" # Change for own one
 export build_recovery=""
 
 # Take last public ROM
