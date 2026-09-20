@@ -251,11 +251,11 @@ if [ $info = true ]; then summary; fi
 if [ ! -z $wait_duration ]; then bash $wait_script $wait_duration; fi
 
 export start_date="$(date +%Y%m%d)"
-export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_"$derp_branch"/"
+export out_rom_dir="$derpfestdir/00_latest_builds/$start_date""_""$derp_branch/"
 
 changelog(){
     # Generate changelog from last build
-    bash "$changelog_script" "$last_build" "$derpfestdir" "$out_rom_dir/changelog_$start_date""_"$derp_branch".txt"
+    bash "$changelog_script" "$last_build" "$derpfestdir" "$out_rom_dir/changelog_$start_date""_""$derp_branch"".txt"
 }
 
 if [ $syncderp = true ]; then sync; fi
