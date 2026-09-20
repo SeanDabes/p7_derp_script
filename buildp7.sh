@@ -148,21 +148,27 @@ sync(){
     # bash $banner_script nowait
     echo -e "${WHITEONMAGENTA} Syncing DerpFest                  ${NOCOLOR}"
     if [ ! -d $derpfestdir ]; then
-        echo "Preparing building instance..."
+        echo -e "${GREEN}Preparing building instance...${NOCOLOR}"
         mkdir $derpfestdir
         cd $derpfestdir
         repo init -u "$derp_repo""android_manifest.git" -b $derp_branch --git-lfs
-        git clone $local_manifest_url $local_manifest_dir
+        git clone $local_manifest_url $local_manifest_dir -b $derp_branch
         if [ ! -d ".repo/local_manifests" ]; then mkdir ".repo/local_manifests"; fi
         cp $local_manifest_file .repo/local_manifests/
     else
-        echo "Cleaning source tree..."
+        cd $derpfestdir
+        echo -e "${GREEN}Updating local manifest...${NOCOLOR}"
+        cd $local_manifest_dir
+        git pull
+        cd $derpfestdir
+        cp $local_manifest_file .repo/local_manifests/
+        echo -e "${GREEN}Cleaning source tree...${NOCOLOR}"
         for i in "${mods_scripts[@]}"; do
             bash $i clean
             done
     fi
     echo
-    echo "Syncing..."
+    echo -e "${GREEN}Syncing...${NOCOLOR}"
     cd $derpfestdir
     repo sync --force-sync -c -j 8
     sleep 5
