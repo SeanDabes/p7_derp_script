@@ -9,7 +9,7 @@
 modstatus=0
 modname="Remove duplicated gms apps"
 modtype=prebuild
-workdir="$derpfestdir/vendor/gms"
+workdir="$derpfestdir/vendor/pixel/gms"
 
 case $1 in
     "enum")

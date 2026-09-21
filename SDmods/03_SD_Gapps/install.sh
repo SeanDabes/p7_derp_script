@@ -8,7 +8,7 @@ modstatus=1
 modname="Gapps by SeanDabes"
 modtype=prebuild
 workdir="$derpfestdir/vendor/lineage"
-workdir2="$derpfestdir/vendor/gms"
+workdir2="$derpfestdir/vendor/pixel/gms"
 
 case $1 in
     "enum")
@@ -27,44 +27,30 @@ case $1 in
 esac
 
 workfile="$workdir/config/derpfest.mk"
-pattern="vendor/gms/products/gms.mk"
-pattern2="vendor/gapps/arm64/arm64-vendor.mk"
+old_mk="vendor/pixel/gms/products/gms.mk"     # lo que hay que sustituir
+new_mk="vendor/gapps/arm64/arm64-vendor.mk"  # lo que queremos poner
 
 echo -e "${BLUE}$modname enabling${NOCOLOR}"
 echo -n "- Checking file..."
-before=$(grep $pattern $workfile | cut -d \" -f 4)
-if [[ $before = $new_value ]]; then
+
+# ¿ya está aplicado?
+if grep -qF "$new_mk" "$workfile"; then
     echo -e "${GREEN}File already OK${NOCOLOR}"
 else
     echo -e "${YELLOW}File with wrong value${NOCOLOR}"
     echo -n "- Modifying $workfile..."
-    if [ -f $workfile ]; then
-        pattern="${pattern//\//\\/}"
-        curr_value=$pattern
-        new_value="${pattern2//\//\\/}"
+    if [ -f "$workfile" ]; then
+        # escapa solo para sed
+        old_sed="${old_mk//\//\\/}"
+        new_sed="${new_mk//\//\\/}"
+        sed -i "s/$old_sed/$new_sed/" "$workfile"
 
-        sed -i "/$pattern/s/$curr_value/$new_value/" "$workfile"
-        after=$(grep $pattern $workfile | cut -d \" -f 4)
-        if [[ $before != $after ]]; then
+        if grep -qF "$new_mk" "$workfile"; then
             echo -e "${GREEN}OK${NOCOLOR}"
         else
-            echo -e "${RED}File not changed${NOLOCOR}"
+            echo -e "${RED}File not changed${NOCOLOR}"   # ojo: tenías NOLOCOR
         fi
     else
         echo -e "${RED}File not found${NOCOLOR}"
     fi
-fi
-
-sleep 0.1
-
-echo -n "- Avoiding duplicated definitions..."
-filename="Android.bp"
-suffix="_sd"
-for file in $(find $workdir2 -name $filename); do
-    mv "$file" "$file""$suffix"
-done
-if [ -z $(find $workdir2 -name $filename) ]; then
-    echo -e "${GREEN}OK${NOCOLOR}"
-else
-    echo -e "${YELLOW}Some items could not be changed${NOCOLOR}"
 fi
