@@ -11,12 +11,18 @@ modtype=prebuild
 workdir="$derpfestdir/bootable/recovery"
 
 userdebug_recovery(){
+    if [ -n "${vendor_boot_override:-}" ]; then
+        echo -e "  ${YELLOW}vendor_boot override set, skipping server lookup${NOCOLOR}"
+        return 0
+    fi
+
     if [ -z $build_recovery ]; then
         echo -n "- Checking $workdir..."
         last_recovery_commit_date=$(git -C $workdir log -1 --format=%cd --date=format:%Y%m%d 2>/dev/null || echo "19700101")
 
         if [ "$last_recovery_commit_date" -gt "$last_build" ]; then
             echo -e "${YELLOW}There are new commits, recovery must be recompiled${NOCOLOR}"
+            echo "export build_recovery=true" >> "$mods_state_file"
             build_recovery=true
         else
             echo -e "${GREEN}Recovery is up to date${NOCOLOR}"
@@ -34,7 +40,7 @@ userdebug_recovery(){
             fi
         fi
     fi
-    if [[ $build_recovery == "true" ]]; then
+    if [ -f "/tmp/build_recovery" ]; then
         echo -e "${YELLOW}Recovery has been forced to be recompiled${NOCOLOR}"
     fi
 }

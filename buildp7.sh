@@ -4,6 +4,8 @@ set -e
 # Modular script to build the DerpFest ROM for the Pixel 7 family. By Sean Dabes.
 # Mods are in a specific directory where can be added, removed, modified or (de)activated one by one without affecting the rest.
 
+rm -f /tmp/build_recovery
+
 ERROR=false
 syncderp=false
 synckernel=false
@@ -16,6 +18,7 @@ recovery=false
 device=""
 jobs=""
 wait_duration=""
+vendor_boot_override=""
 
 SECONDS=0 # Timer start
 
@@ -35,11 +38,13 @@ export modsdir="$rootdir/SDmods"
 export banner_script="$toolsdir/banner.sh"
 export monitor_script="$toolsdir/monitor.sh"
 export build_script="$toolsdir/build_rom.sh"
+export recovery_script="$toolsdir/build_recovery.sh"
 export upload_script="$toolsdir/upload.sh"
 export wait_script="$toolsdir/countdown.sh"
 export changelog_script="$toolsdir/changelog.sh"
 export derpfestdir="$rootdir/../derpfest_$derp_branch" # Change for own one
 export build_recovery=""
+export mods_state_file="$rootdir/.SDmods.state"
 
 # Take last public ROM
 export public_server="onedrive"
@@ -129,17 +134,26 @@ summary(){
 
 apply_mods(){
     local counter=1
-    local -n array_ref="active_$2_mods" # -n argument links to the actual variable
+    local -n array_ref="active_$2_mods"     # -n argument links to the actual variable
+
+    : > "$mods_state_file"                  # estado limpio ANTES de correr los mods
+
     echo -e "${WHITEONMAGENTA} Applying $2 mods... ${NOCOLOR}"
     echo
     for j in "${!array_ref[@]}";do
-        # bash $banner_script nowait
         echo -ne "${YELLOW} $counter/$((num_active_$2_mods)) "
         bash "${array_ref[j]}" $1
         echo
         sleep 3
         counter=$((counter + 1))
     done
+
+    if [ -s "$mods_state_file" ]; then       # solo si algún mod escribió algo
+        echo -e "${WHITEONMAGENTA} Applying state from mods...${NOCOLOR}"
+        source "$mods_state_file"
+    fi
+
+    : > "$mods_state_file"                  # dejarlo vacío al salir
 
     sleep 3
 }
@@ -191,12 +205,14 @@ helpmsg(){
     echo "                       Use rclone to configure a server and set it in tools/upload.sh."
     echo " -w, --wait            Waits the supplied time before compiling."
     echo "                       Duration format: 10s, 5m, 1h30m20s, 2h, etc. (default 10s)"
+    echo " -v, --vendor_boot <path> Uses the specified vendor_boot.img instead of"
+    echo "                          compiling or downloading one."
     echo
     exit 1
 }
 
 # Using getopt for handling options
-OPTIONS=$(getopt -o d:j:spinuw:r -l device:,jobs:,sync,poweroff,info,nomodules,upload,wait,recovery: -- "$@")
+OPTIONS=$(getopt -o d:j:spinuw:rv: -l device:,jobs:,sync,poweroff,info,nomodules,upload,wait,recovery,vendor_boot: -- "$@")
 eval set -- "$OPTIONS"
 
 while true; do
@@ -237,12 +253,26 @@ while true; do
             build_recovery=true
             shift
             ;;
+        -v|--vendor_boot)
+            vendor_boot_override="$2"
+            shift 2
+            ;;
         --)
             shift
             break
             ;;
     esac
 done
+
+if [ -n "$vendor_boot_override" ]; then
+    if [ ! -f "$vendor_boot_override" ]; then
+        echo -e "${RED}ERROR: vendor_boot.img not found at '$vendor_boot_override'${NOCOLOR}"
+        exit 1
+    fi
+    vendor_boot_override=$(realpath "$vendor_boot_override")
+    export vendor_boot_override
+    echo -e "${YELLOW}Using user-provided vendor_boot.img: $vendor_boot_override${NOCOLOR}"
+fi
 
 if [ -z $jobs ]; then jobs=$(nproc --all); fi
 
@@ -262,28 +292,25 @@ if [ $syncderp = true ]; then sync; fi
 
 case "$device" in
     "all")
-        # bash $banner_script nowait
         if [ $originalbuild = false ]; then apply_mods $device prebuild; fi
 
-        bash $build_script cheetah rom $jobs
+        bash $recovery_script cheetah $jobs
+        bash $build_script cheetah $jobs
         if [ $ERROR = true ]; then continue; fi
-        bash $build_script panther rom $jobs
+        bash $recovery_script panther $jobs
+        bash $build_script panther $jobs
         if [ $ERROR = true ]; then continue; fi
-        bash $build_script lynx rom $jobs
+        bash $recovery_script lynx $jobs
+        bash $build_script lynx $jobs
         if [ $ERROR = true ]; then continue; fi
 
         changelog
-
         ;;
     "panther" | "cheetah" | "lynx" )
-        # bash $banner_script nowait
         if [ $originalbuild = false ]; then apply_mods $device prebuild; fi
 
-        bash $build_script $device rom $jobs
-        if [ $ERROR = true ]; then continue; fi
-
-        # changelog
-
+        bash $recovery_script $device $jobs
+        bash $build_script $device $jobs
         ;;
     *)
         if [ $upload = true ]; then

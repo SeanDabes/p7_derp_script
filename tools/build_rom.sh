@@ -11,105 +11,60 @@ build_all() {
     local src_dir="out/target/product/$device/"
     local target_files_zip="lineage_$device-target_files.zip"
     local out_dir="$out_rom_dir/$device"
-    # local recovery_dir="out_vendor_boot/$device"
     local work_dir="$out_dir/work_dir"
-    local ota_file="DerpFest-v$derp_branch-$start_date-$1-Official-Stable.zip"
+    local ota_file="DerpFest-v$derp_branch-$start_date-$device-Official-Stable.zip"
+    local backup_file="$out_dir/vendor_boot.img"
+
     if [[ $device == "panther" ]] || [[ $device == "cheetah" ]]; then
         local kernel_dir="device/google/pantah-kernels/6.1/"
     fi
     if [[ $device == "lynx" ]]; then
         local kernel_dir="device/google/$device-kernels/6.1/"
     fi
+
     mkdir -p "$out_dir"
 
     cd "$derpfestdir" || { echo "Error: cannot enter $derpfestdir"; exit 1; }
-    # mkdir -p "$recovery_dir"
 
-    source build/envsetup.sh
+    # vendor_boot.img debe existir ya: lo prepara build_recovery.sh.
+    if [ ! -f "$backup_file" ]; then
+        echo -e "${RED}ERROR: vendor_boot.img not found at $backup_file${NOCOLOR}"
+        echo -e "${RED}Did build_recovery.sh run first?${NOCOLOR}"
+        exit 1
+    fi
 
-    # 0. Build vendor_boot with WildKernel and userdebug recovery
-    if [[ $build_recovery == "true" ]]; then
-        echo -e "${WHITEONMAGENTA} Building recovery...${NOCOLOR}"
-        lunch "lineage_$device-$android_version-userdebug"
-        # bash "$modsdir/98_WildKernel/install.sh" "postlunch_hook" "$device" # Hook to install WildKernel
-        echo -e "\n${WHITEONMAGENTA} Building vendor_boot with $jobs jobs...${NOCOLOR}"
-        mka vendorbootimage -j "$jobs"
-
-        echo -n "- Copying vendor_boot.img..."
-        cp "$src_dir/vendor_boot.img" "$out_dir"
-        if [ -f "$out_dir/vendor_boot.img" ]; then
+    if [ -f "device/google/gs201/wildkernel/Image.lz4" ]; then
+        echo -e "${WHITEONMAGENTA}WildKernel present, using prebuilt kernel${NOCOLOR}"
+        echo -n "- Copying WildKernel Image.lz4..."
+        cp "device/google/gs201/wildkernel/Image.lz4" "$kernel_dir"
+        if [ -f "$kernel_dir/Image.lz4" ]; then
             echo -e "${GREEN}OK${NOCOLOR}"
         else
             echo -e "${RED}KO${NOCOLOR}"
             exit 1
         fi
+        export SKIP_KERNEL_BUILD=true
+        export SKIP_KERNEL_SYNC=true
+    else
+        echo -e "${YELLOW}WildKernel not present, kernel will be built from source${NOCOLOR}"
     fi
 
+    # ------------------------------------------------------------------
     # 1. Build target-files-package (user)
+    # ------------------------------------------------------------------
     echo -e "\n${WHITEONMAGENTA} Building target-files-package (user) with $jobs jobs...${NOCOLOR}"
-    if [ -f "$kernel_dir/Image.lz4" ]; then   # Ensure the Image.lz4 is at the correct location
-        echo "${GREEN}Kernel image found, going ahead${NOCOLOR}"
-    else
-        echo "${RED}Kernel image NOT found, stopping. Verify the correct download in previous mod.${NOCOLOR}"
-        exit 1
-    fi
-    export SKIP_KERNEL_BUILD=true
-    export SKIP_KERNEL_SYNC=true
     source build/envsetup.sh
     lunch "lineage_$device-$android_version-user"
-    # Copy WildKernel image to proper directory
-    echo -n "- Copying WildKernel Image.lz4..."
-    cp "device/google/gs201/wildkernel/Image.lz4" "$kernel_dir"
-    if [ -f "$kernel_dir/Image.lz4" ]; then
-        echo -e "${GREEN}OK${NOCOLOR}"
-    else
-        echo -e "${RED}KO${NOCOLOR}"
-        exit 1
-    fi
-    echo -n "- Removing previous artifacts..." # Just in case
+
+    echo -n "- Removing previous artifacts..."
     rm -rf "out/target/product/$device/obj/BOOTIMAGE*"
     rm -f "out/target/product/$device/vendor_boot.img"
     echo -e "${GREEN}OK${NOCOLOR}"
 
-    # Monitor to keep an eye on vendor_boot (next mka deletes it as it changes from userdebur to user)
-    echo -e "\n${WHITEONMAGENTA} Starting vendor_boot monitor...${NOCOLOR}"
-    local backup_file="$out_dir/vendor_boot.img"
-    local target_dir="out/target/product/$device"
-    local target_file="$target_dir/vendor_boot.img"
-
-    if [ ! -f "$backup_file" ]; then
-        echo -e "${RED}ERROR: vendor_boot.img backup not found in $out_dir${NOCOLOR}"
-        exit 1
-    fi
-
-    mkdir -p "$target_dir"
-
-    # Function to restore file
-    restore_vendor_boot() {
-        if [ ! -f "$target_file" ]; then
-            mkdir -p "$target_dir"
-            cp "$backup_file" "$target_file"
-            echo -e "${GREEN}Restored vendor_boot.img${NOCOLOR}"
-        fi
-    }
-
-    (
-        while true; do
-            restore_vendor_boot
-            sleep 1
-        done
-    ) &
-    MONITOR_PID=$!
-    echo -e "${GREEN}Monitor started with PID $MONITOR_PID${NOCOLOR}"
-
-    # Ejecutar mka
     mka target-files-package otatools -j "$jobs" || { echo -e "${RED}mka failed${NOCOLOR}"; exit 1; }
     echo -e "${GREEN}mka succeeded, continuing...${NOCOLOR}"
 
-    # Kill monitor (forcefully)
-    kill $MONITOR_PID 2>/dev/null
-
-    # 2. Extract target-files into a temporary directory
+    # 2. Extract target-files
     echo -e "\n- Uncompressing target_files..."
     echo -e "${WHITEONMAGENTA}Extracting and preparing images...${NOCOLOR}                          " > /tmp/build_phase
     local target_files_path="$src_dir/obj/PACKAGING/target_files_intermediates/$target_files_zip"
@@ -120,6 +75,18 @@ build_all() {
     rm -rf "$work_dir"
     mkdir -p "$work_dir"
     unzip -q "$target_files_path" -d "$work_dir"
+
+    if [ ! -f "$work_dir/IMAGES/vendor_boot.img" ]; then
+        echo -e "${RED}ERROR: $work_dir/IMAGES/vendor_boot.img not found in target_files${NOCOLOR}"
+        exit 1
+    fi
+    cp "$backup_file" "$work_dir/IMAGES/vendor_boot.img"
+    if [ -f "$work_dir/IMAGES/vendor_boot.img" ]; then
+        echo -e "${GREEN}vendor_boot.img replaced with userdebug version${NOCOLOR}"
+    else
+        echo -e "${RED}ERROR: could not replace vendor_boot.img${NOCOLOR}"
+        exit 1
+    fi
 
     # 3. Copy images
     echo -e "\n- Copying images..."
@@ -145,10 +112,7 @@ build_all() {
         exit 1
     fi
 
-    # 4. Patch kernel info in package
-    echo "6.1.0" > "$work_dir/META/kernel_version.txt" || { echo -e "${RED}Error: could nopt apply patch${NOCOLOR}"; exit 1; }
-
-    # 5. Repack target-files
+    # 4. Repack target-files
     echo -e "${WHITEONMAGENTA}Repacking target files...${NOCOLOR}"
     cd "$work_dir"
     if ! zip -q -r -y -X -0 "target_files_mod.zip" .; then
@@ -161,14 +125,11 @@ build_all() {
     fi
     echo -e "${GREEN}OK${NOCOLOR}"
 
-    # 6. Build OTA package (return to ROM root)
+    # 5. Build OTA package
     echo -e "\n${WHITEONMAGENTA} Building OTA package...${NOCOLOR}"
-    cd "$derpfestdir"   # Important: go back to the source root
+    cd "$derpfestdir"
     export TMPDIR="$derpfestdir/tmp-ota"
-    # export TMP="$derpfestdir/tmp-ota"
-    # export TEMP="$derpfestdir/tmp-ota"
     mkdir -p "$TMPDIR"
-    # chmod 777 $TMPDIR
     if ! command -v ota_from_target_files >/dev/null 2>&1; then
         echo -e "${RED}ERROR: ota_from_target_files not found.${NOCOLOR}"
         exit 1
@@ -182,10 +143,10 @@ build_all() {
         exit 1
     fi
 
-    # 7. Cleanup
+    # 6. Cleanup
     rm -rf "$work_dir" "$TMPDIR"
 
-    # 8. SHA256 checksum
+    # 7. SHA256 checksum
     cd "$out_dir"
     sha256sum "$ota_file" >> "$ota_file.sha256sum"
     cd "$derpfestdir"
@@ -193,13 +154,10 @@ build_all() {
     echo -e "\n${GREEN}Process completed successfully!${NOCOLOR}"
 }
 
-# ----------------------------------------------------------------------
-# Execute build_all directly (no tmux)
-# ----------------------------------------------------------------------
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <device> <jobs>"
     exit 1
 fi
 
-build_all "$1" "$3"
+build_all "$1" "$2"
 sleep 5
